@@ -49,7 +49,10 @@ export default function LoginPage() {
     
     const result = await verifyOtp(email, otp)
     if (result.type === 'auth/verifyOtp/fulfilled') {
-      router.push('/')
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        router.push('/')
+      }, 100)
     }
   }
 

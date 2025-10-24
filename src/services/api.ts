@@ -3,11 +3,12 @@ import { store } from '@/store/store'
 
 // Create axios instance
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important for HTTP-only cookies
 })
 
 // Request interceptor to add auth token
@@ -42,15 +43,16 @@ api.interceptors.response.use(
         
         if (refreshToken) {
           const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/auth/refresh`,
-            { refreshToken }
+            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/auth/refresh`,
+            {},
+            { withCredentials: true }
           )
           
-          const { accessToken } = response.data
-          store.dispatch({ type: 'auth/setAccessToken', payload: accessToken })
+          const { access_token } = response.data
+          store.dispatch({ type: 'auth/setAccessToken', payload: access_token })
           
           // Retry original request with new token
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`
+          originalRequest.headers.Authorization = `Bearer ${access_token}`
           return api(originalRequest)
         }
       } catch (refreshError) {

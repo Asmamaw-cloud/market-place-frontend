@@ -2,13 +2,28 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { User, AuthState, LoginRequest, VerifyOtpRequest } from '@/types'
 import { authApi } from '@/lib/api'
 
-const initialState: AuthState = {
-  user: null,
-  accessToken: null,
-  isAuthenticated: false,
-  isLoading: false,
-  error: null,
+// Initialize state from localStorage if available
+const getInitialState = (): AuthState => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('access_token')
+    return {
+      user: null,
+      accessToken: token,
+      isAuthenticated: !!token,
+      isLoading: false,
+      error: null,
+    }
+  }
+  return {
+    user: null,
+    accessToken: null,
+    isAuthenticated: false,
+    isLoading: false,
+    error: null,
+  }
 }
+
+const initialState: AuthState = getInitialState()
 
 // Async thunks
 export const requestOtp = createAsyncThunk(
@@ -28,7 +43,7 @@ export const verifyOtp = createAsyncThunk(
   async (data: VerifyOtpRequest, { rejectWithValue }) => {
     try {
       const response = await authApi.verifyOtp(data.email, data.code)
-      const { access_token, user } = response.data
+      const { access_token, user } = response.data.data
       
       // Store token in localStorage
       if (typeof window !== 'undefined') {
@@ -109,6 +124,10 @@ const authSlice = createSlice({
     },
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload
+      state.isAuthenticated = true
+    },
+    setAccessToken: (state, action: PayloadAction<string>) => {
+      state.accessToken = action.payload
       state.isAuthenticated = true
     },
     clearAuth: (state) => {
@@ -204,5 +223,5 @@ const authSlice = createSlice({
   },
 })
 
-export const { clearError, setUser, clearAuth } = authSlice.actions
+export const { clearError, setUser, setAccessToken, clearAuth } = authSlice.actions
 export default authSlice.reducer
