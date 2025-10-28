@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { User, AuthState, LoginRequest, VerifyOtpRequest } from '@/types'
-import { authApi } from '@/lib/api'
+import { authApi, usersApi } from '@/lib/api'
 
 // Initialize state from localStorage if available
 const getInitialState = (): AuthState => {
@@ -102,15 +102,10 @@ export const loadUser = createAsyncThunk(
   'auth/loadUser',
   async (_, { rejectWithValue }) => {
     try {
-      // This would typically be a call to get current user profile
-      // For now, we'll just check if token exists
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
-      if (!token) {
-        throw new Error('No token found')
-      }
-      return { access_token: token }
+      const response = await usersApi.getProfile()
+      return response.data
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to load user')
+      return rejectWithValue(error.response?.data?.message || 'Failed to load user')
     }
   }
 )
@@ -211,7 +206,7 @@ const authSlice = createSlice({
       })
       .addCase(loadUser.fulfilled, (state, action) => {
         state.isLoading = false
-        state.accessToken = action.payload.access_token
+        state.user = action.payload
         state.isAuthenticated = true
       })
       .addCase(loadUser.rejected, (state) => {

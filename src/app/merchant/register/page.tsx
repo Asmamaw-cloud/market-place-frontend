@@ -64,7 +64,7 @@ export default function MerchantRegisterPage() {
   const [isGettingLocation, setIsGettingLocation] = useState(false)
 
   const router = useRouter()
-  const { isAuthenticated, isUser, user, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isUser, user, isLoading: authLoading, loadUser } = useAuth()
   const { createMerchant } = useMerchants()
 
   const {
@@ -183,9 +183,11 @@ export default function MerchantRegisterPage() {
         })
       )
       
+      // Don't send base64 image data - it's too large for the database
+      // In a real app, you'd upload this to cloud storage first
       const merchantData = {
         ...cleanData,
-        logoUrl: logoPreview, // In a real app, you'd upload this to a server
+        // logoUrl: logoPreview, // Skipping for now - base64 data is too large
         serviceAreas
       }
 
@@ -198,6 +200,10 @@ export default function MerchantRegisterPage() {
       console.log('=== END FRONTEND DEBUG ===')
       
       await createMerchant(merchantData)
+      
+      // Reload user data to get updated role
+      await loadUser()
+      
       router.push('/merchant/dashboard')
     } catch (error: any) {
       console.error('Failed to create merchant:', error)
@@ -349,6 +355,9 @@ export default function MerchantRegisterPage() {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Recommended: 200x200px, PNG or JPG
+                        </p>
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                          Note: Logo upload preview only - not saved yet
                         </p>
                       </div>
                     </div>
