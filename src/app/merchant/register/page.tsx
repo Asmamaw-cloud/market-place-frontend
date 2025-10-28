@@ -202,7 +202,10 @@ export default function MerchantRegisterPage() {
       // Reload user data to get updated role
       await loadUser()
       
-      router.push('/merchant/dashboard')
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        router.push('/merchant/dashboard')
+      }, 100)
     } catch (error: any) {
       console.error('Failed to create merchant:', error)
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create merchant account. Please try again.'

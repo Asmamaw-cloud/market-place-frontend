@@ -136,7 +136,7 @@ export function NotificationCenter({ isOpen, onClose, className }: NotificationC
   }
 
   return (
-    <div className={cn('fixed inset-0 z-50 bg-black/50', className)}>
+    <div className={cn('fixed inset-0 z-50 ', className)}>
       <div className="fixed right-0 top-0 h-full w-full max-w-md bg-background shadow-lg">
         <div className="flex h-full flex-col">
           {/* Header */}

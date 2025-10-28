@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/hooks/useAuth'
 import { 
   LayoutDashboard, 
   Package, 
@@ -18,9 +19,19 @@ import {
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { isMerchant, isAdmin } = useAuth()
   
   const isMerchantRoute = pathname.startsWith('/merchant')
   const isAdminRoute = pathname.startsWith('/admin')
+  
+  // Only show sidebar if user has the appropriate role
+  if (isMerchantRoute && !isMerchant) {
+    return null
+  }
+  
+  if (isAdminRoute && !isAdmin) {
+    return null
+  }
 
   const merchantNavItems = [
     { name: 'Dashboard', href: '/merchant/dashboard', icon: LayoutDashboard },

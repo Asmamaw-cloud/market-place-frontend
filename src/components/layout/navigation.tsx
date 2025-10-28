@@ -99,14 +99,14 @@ export function Navigation() {
   ]
 
   const getNavItems = () => {
-    if (isAdminRoute) return adminNavItems
-    if (isMerchantRoute) return merchantNavItems
+    if (isAdminRoute && isAdmin) return adminNavItems
+    if (isMerchantRoute && isMerchant) return merchantNavItems
     return customerNavItems
   }
 
   const getAccountItems = () => {
-    if (isAdminRoute) return adminAccountItems
-    if (isMerchantRoute) return merchantAccountItems
+    if (isAdminRoute && isAdmin) return adminAccountItems
+    if (isMerchantRoute && isMerchant) return merchantAccountItems
     return customerAccountItems
   }
 
@@ -170,7 +170,7 @@ export function Navigation() {
           )}
 
           {/* Additional navigation items for merchants */}
-          {isMerchantRoute && isAuthenticated && (
+          {isMerchantRoute && isAuthenticated && isMerchant && (
             <>
               <Link href="/merchant/analytics">
                 <Button variant="ghost" size="sm" className="text-sm">
@@ -188,7 +188,7 @@ export function Navigation() {
           )}
 
           {/* Additional navigation items for admins */}
-          {isAdminRoute && isAuthenticated && (
+          {isAdminRoute && isAuthenticated && isAdmin && (
             <>
               <Link href="/admin/analytics">
                 <Button variant="ghost" size="sm" className="text-sm">
@@ -228,7 +228,7 @@ export function Navigation() {
           )}
 
           {/* Chat (for all authenticated users) */}
-          {isAuthenticated && (
+          {isAuthenticated && (isCustomerRoute || (isMerchantRoute && isMerchant) || (isAdminRoute && isAdmin)) && (
             <Link href={isMerchantRoute ? "/merchant/chat" : "/chat"}>
               <Button variant="ghost" size="icon" className="relative">
                 <MessageCircle className="h-4 w-4" />
@@ -291,7 +291,7 @@ export function Navigation() {
                   <DropdownMenuSeparator />
                   
                   {/* Quick Actions */}
-                  {isCustomerRoute && (
+                  {isCustomerRoute && !isMerchant && !isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link href="/merchant/register" className="flex items-center">
                         <Store className="h-4 w-4 mr-2" />
