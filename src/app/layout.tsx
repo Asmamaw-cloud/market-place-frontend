@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
-import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ToastProvider } from "@/components/ui/toast";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -21,14 +20,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} container mx-auto`}>
-        <ErrorBoundary>
-          <Providers>
-            <ToastProvider>
-              {children}
-              <Toaster />
-            </ToastProvider>
-          </Providers>
-        </ErrorBoundary>
+        <Providers>
+          <ToastProvider>
+            {children}
+            <Toaster />
+          </ToastProvider>
+        </Providers>
       </body>
     </html>
   );

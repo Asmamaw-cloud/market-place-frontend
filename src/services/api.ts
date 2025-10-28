@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { store } from '@/store/store'
 
 // Create axios instance
 const api = axios.create({
@@ -11,11 +10,20 @@ const api = axios.create({
   withCredentials: true, // Important for HTTP-only cookies
 })
 
+// Store token getter function - will be set from outside
+let getToken: (() => string | null) | null = null
+let dispatch: ((action: any) => void) | null = null
+
+// Allow external code to set the token getter
+export const setAuthHelpers = (tokenGetter: () => string | null, dispatcher: (action: any) => void) => {
+  getToken = tokenGetter
+  dispatch = dispatcher
+}
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const state = store.getState()
-    const token = state.auth.accessToken
+    const token = getToken?.()
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -38,8 +46,7 @@ api.interceptors.response.use(
       originalRequest._retry = true
       
       try {
-        const state = store.getState()
-        const refreshToken = state.auth.accessToken
+        const refreshToken = getToken?.()
         
         if (refreshToken) {
           const response = await axios.post(
@@ -49,7 +56,7 @@ api.interceptors.response.use(
           )
           
           const { access_token } = response.data
-          store.dispatch({ type: 'auth/setAccessToken', payload: access_token })
+          dispatch?.({ type: 'auth/setAccessToken', payload: access_token })
           
           // Retry original request with new token
           originalRequest.headers.Authorization = `Bearer ${access_token}`
@@ -57,8 +64,10 @@ api.interceptors.response.use(
         }
       } catch (refreshError) {
         // Refresh failed, redirect to login
-        store.dispatch({ type: 'auth/logout' })
-        window.location.href = '/login'
+        dispatch?.({ type: 'auth/logout' })
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login'
+        }
       }
     }
     

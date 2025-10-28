@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,30 +20,23 @@ import {
   Save,
   Loader2,
   AlertCircle,
-  Package
+  Package,
+  X
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useProducts } from '@/hooks/useProducts'
 import { productSchema } from '@/lib/validators'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
-
-const categories = [
-  'electronics',
-  'clothing',
-  'food',
-  'books',
-  'home',
-  'beauty',
-  'sports',
-  'automotive',
-  'other'
-]
+import { categoriesApi } from '@/lib/api'
+import { UploadButton } from '@/components/uploadthing'
 
 
 export default function CreateProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [imageUrls, setImageUrls] = useState<string[]>([])
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([])
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false)
 
   const router = useRouter()
   const { isAuthenticated, isMerchant } = useAuth()
@@ -101,6 +94,25 @@ export default function CreateProductPage() {
 
   const watchedName = watch('name')
 
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setIsLoadingCategories(true)
+      try {
+        const response = await categoriesApi.list()
+        setCategories(response.data.data || [])
+      } catch (error) {
+        console.error('Failed to fetch categories:', error)
+      } finally {
+        setIsLoadingCategories(false)
+      }
+    }
+
+    if (isAuthenticated && isMerchant) {
+      fetchCategories()
+    }
+  }, [isAuthenticated, isMerchant])
+
   // Auto-generate slug from name
   const generateSlug = (name: string) => {
     return name
@@ -109,28 +121,19 @@ export default function CreateProductPage() {
       .replace(/(^-|-$)/g, '')
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) return
-
-    const newPreviews: string[] = []
-    files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        newPreviews.push(e.target?.result as string)
-        if (newPreviews.length === files.length) {
-          setImagePreviews(prev => [...prev, ...newPreviews])
-          setValue('images', [...imagePreviews, ...newPreviews])
-        }
-      }
-      reader.readAsDataURL(file)
-    })
+  const handleImageUpload = (res: any[] | undefined) => {
+    if (res && res.length > 0) {
+      const newUrls = res.map(file => file.url)
+      const updatedUrls = [...imageUrls, ...newUrls]
+      setImageUrls(updatedUrls)
+      setValue('images', updatedUrls)
+    }
   }
 
   const removeImage = (index: number) => {
-    const newPreviews = imagePreviews.filter((_, i) => i !== index)
-    setImagePreviews(newPreviews)
-    setValue('images', newPreviews)
+    const newUrls = imageUrls.filter((_, i) => i !== index)
+    setImageUrls(newUrls)
+    setValue('images', newUrls)
   }
 
 
@@ -147,7 +150,31 @@ export default function CreateProductPage() {
         data.slug = generateSlug(data.name)
       }
 
-      await createProduct(data)
+      // Prepare product data
+      const productData: any = {
+        name: data.name,
+        slug: data.slug,
+        description: data.description || undefined,
+        skus: data.skus || []
+      }
+
+      // Include categoryId if provided
+      if (data.categoryId) {
+        productData.categoryId = data.categoryId
+      }
+
+      // For images: send the actual URLs from UploadThing
+      if (imageUrls.length > 0) {
+        productData.images = imageUrls
+      } else {
+        productData.images = []
+      }
+
+      console.log('Creating product with data:', productData)
+      console.log('Image URLs count:', imageUrls.length)
+      console.log('Sending images:', productData.images.length)
+      
+      await createProduct(productData)
       router.push('/merchant/products')
     } catch (error) {
       console.error('Failed to create product:', error)
@@ -243,20 +270,23 @@ export default function CreateProductPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
-                  <Select onValueChange={(value) => setValue('categoryId', value)}>
+                  <Select onValueChange={(value) => setValue('categoryId', value)} disabled={isLoadingCategories}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder={isLoadingCategories ? "Loading categories..." : "Select category"} />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   {errors.categoryId && (
                     <p className="text-sm text-destructive">{errors.categoryId.message}</p>
+                  )}
+                  {isLoadingCategories && (
+                    <p className="text-xs text-muted-foreground">Loading categories...</p>
                   )}
                 </div>
               </CardContent>
@@ -271,37 +301,30 @@ export default function CreateProductPage() {
                 <div className="space-y-2">
                   <Label>Upload Images</Label>
                   <div className="border-2 border-dashed border-muted-foreground rounded-lg p-6">
-                    <input
-                      type="file"
-                      id="images"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageUpload}
-                      className="hidden"
+                    <UploadButton
+                      endpoint="productImages"
+                      onClientUploadComplete={handleImageUpload}
+                      onUploadError={(error: Error) => {
+                        console.error('Upload error:', error)
+                        alert('Failed to upload images. Please try again.')
+                      }}
+                      appearance={{
+                        button: "w-full text-center",
+                        allowedContent: "text-sm text-muted-foreground"
+                      }}
                     />
-                    <Label htmlFor="images" className="cursor-pointer">
-                      <div className="text-center">
-                        <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <p className="text-lg font-medium mb-2">
-                          Click to upload images
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          PNG, JPG up to 10MB each
-                        </p>
-                      </div>
-                    </Label>
                   </div>
                 </div>
 
-                {imagePreviews.length > 0 && (
+                {imageUrls.length > 0 && (
                   <div className="space-y-2">
                     <Label>Uploaded Images</Label>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {imagePreviews.map((preview, index) => (
+                      {imageUrls.map((url, index) => (
                         <div key={index} className="relative group">
                           <img
-                            src={preview}
-                            alt={`Preview ${index + 1}`}
+                            src={url}
+                            alt={`Product image ${index + 1}`}
                             className="w-full h-24 object-cover rounded-lg"
                           />
                           <Button
@@ -311,7 +334,7 @@ export default function CreateProductPage() {
                             className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={() => removeImage(index)}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <X className="h-3 w-3" />
                           </Button>
                         </div>
                       ))}

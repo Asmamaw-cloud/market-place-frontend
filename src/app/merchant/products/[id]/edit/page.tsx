@@ -20,13 +20,15 @@ import {
   Save,
   Loader2,
   AlertCircle,
-  Package
+  Package,
+  X
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useProducts } from '@/hooks/useProducts'
 import { productSchema } from '@/lib/validators'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { UploadButton } from '@/components/uploadthing'
 
 const categories = [
   'electronics',
@@ -46,7 +48,7 @@ export default function EditProductPage() {
   const productId = params.id as string
 
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [imageUrls, setImageUrls] = useState<string[]>([])
 
   const { isAuthenticated, isMerchant } = useAuth()
   const { products, isLoading, error, fetchProducts, updateProduct } = useProducts()
@@ -116,7 +118,7 @@ export default function EditProductPage() {
           }
         ]
       })
-      setImagePreviews(product.images || [])
+      setImageUrls(product.images || [])
     }
   }, [product, reset])
 
@@ -144,28 +146,19 @@ export default function EditProductPage() {
     remove(index)
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) return
-
-    const newPreviews: string[] = []
-    files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        newPreviews.push(e.target?.result as string)
-        if (newPreviews.length === files.length) {
-          setImagePreviews(prev => [...prev, ...newPreviews])
-          setValue('images', [...imagePreviews, ...newPreviews])
-        }
-      }
-      reader.readAsDataURL(file)
-    })
+  const handleImageUpload = (res: any[] | undefined) => {
+    if (res && res.length > 0) {
+      const newUrls = res.map(file => file.url)
+      const updatedUrls = [...imageUrls, ...newUrls]
+      setImageUrls(updatedUrls)
+      setValue('images', updatedUrls)
+    }
   }
 
   const removeImage = (index: number) => {
-    const newPreviews = imagePreviews.filter((_, i) => i !== index)
-    setImagePreviews(newPreviews)
-    setValue('images', newPreviews)
+    const newUrls = imageUrls.filter((_, i) => i !== index)
+    setImageUrls(newUrls)
+    setValue('images', newUrls)
   }
 
   const onSubmit = async (data: any) => {
@@ -340,29 +333,30 @@ export default function EditProductPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Upload Images</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageUpload}
-                    className="flex-1"
+                <div className="border-2 border-dashed border-muted-foreground rounded-lg p-6">
+                  <UploadButton
+                    endpoint="productImages"
+                    onClientUploadComplete={handleImageUpload}
+                    onUploadError={(error: Error) => {
+                      console.error('Upload error:', error)
+                      alert('Failed to upload images. Please try again.')
+                    }}
+                    appearance={{
+                      button: "w-full text-center",
+                      allowedContent: "text-sm text-muted-foreground"
+                    }}
                   />
-                  <Button type="button" variant="outline">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload
-                  </Button>
                 </div>
               </div>
 
-              {imagePreviews.length > 0 && (
+              {imageUrls.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {imagePreviews.map((image, index) => (
+                  {imageUrls.map((url, index) => (
                     <div key={index} className="relative group">
                       <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                         <img
-                          src={image}
-                          alt={`Preview ${index + 1}`}
+                          src={url}
+                          alt={`Product image ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -373,7 +367,7 @@ export default function EditProductPage() {
                         className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => removeImage(index)}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <X className="h-3 w-3" />
                       </Button>
                     </div>
                   ))}

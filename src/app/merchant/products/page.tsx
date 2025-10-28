@@ -27,8 +27,8 @@ import Link from 'next/link'
 
 export default function MerchantProductsPage() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
   const router = useRouter()
@@ -62,8 +62,8 @@ export default function MerchantProductsPage() {
   const filteredProducts = products?.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = !categoryFilter || product.categoryId === categoryFilter
-    const matchesStatus = !statusFilter || product.skus?.some(sku => sku.active) === (statusFilter === 'active')
+    const matchesCategory = categoryFilter === 'all' || product.categoryId === categoryFilter
+    const matchesStatus = statusFilter === 'all' || product.skus?.some(sku => sku.active) === (statusFilter === 'active')
     
     return matchesSearch && matchesCategory && matchesStatus
   }) || []
@@ -138,7 +138,7 @@ export default function MerchantProductsPage() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   <SelectItem value="electronics">Electronics</SelectItem>
                   <SelectItem value="clothing">Clothing</SelectItem>
                   <SelectItem value="food">Food</SelectItem>
@@ -151,7 +151,7 @@ export default function MerchantProductsPage() {
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
@@ -187,7 +187,7 @@ export default function MerchantProductsPage() {
                 <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Products Found</h3>
                 <p className="text-muted-foreground mb-4">
-                  {searchTerm || categoryFilter || statusFilter 
+                  {searchTerm || categoryFilter !== 'all' || statusFilter !== 'all'
                     ? 'No products match your filters'
                     : 'You haven\'t created any products yet'
                   }
@@ -206,7 +206,7 @@ export default function MerchantProductsPage() {
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="overflow-hidden">
                   <div className="aspect-square bg-muted relative">
-                    {product.images && product.images.length > 0 ? (
+                    {product.images && product.images.length > 0 && product.images[0] ? (
                       <img
                         src={product.images[0]}
                         alt={product.name}

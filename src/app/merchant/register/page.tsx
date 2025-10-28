@@ -19,13 +19,15 @@ import {
   Upload, 
   CheckCircle,
   ArrowLeft,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useMerchants } from '@/hooks/useMerchants'
 import { merchantSchema } from '@/lib/validators'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { UploadButton } from '@/components/uploadthing'
 
 const ethiopianRegions = [
   'Addis Ababa',
@@ -56,7 +58,7 @@ const businessTypes = [
 
 export default function MerchantRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [serviceAreas, setServiceAreas] = useState<string[]>([])
   const [newServiceArea, setNewServiceArea] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -89,14 +91,11 @@ export default function MerchantRegisterPage() {
   const watchedLat = watch('lat')
   const watchedLon = watch('lon')
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setLogoPreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
+  const handleLogoUpload = (res: any[] | undefined) => {
+    if (res && res[0]) {
+      const uploadedUrl = res[0].url
+      setLogoUrl(uploadedUrl)
+      setValue('logoUrl', uploadedUrl)
     }
   }
 
@@ -183,11 +182,10 @@ export default function MerchantRegisterPage() {
         })
       )
       
-      // Don't send base64 image data - it's too large for the database
-      // In a real app, you'd upload this to cloud storage first
+      // Include logo URL if uploaded
       const merchantData = {
         ...cleanData,
-        // logoUrl: logoPreview, // Skipping for now - base64 data is too large
+        logoUrl: logoUrl || undefined,
         serviceAreas
       }
 
@@ -328,26 +326,38 @@ export default function MerchantRegisterPage() {
                     <Label htmlFor="logo">Store Logo</Label>
                     <div className="flex items-center space-x-4">
                       <div className="relative">
-                        <input
-                          type="file"
-                          id="logo"
-                          accept="image/*"
-                          onChange={handleLogoUpload}
-                          className="hidden"
-                        />
-                        <Label htmlFor="logo" className="cursor-pointer">
-                          <div className="w-20 h-20 border-2 border-dashed border-muted-foreground rounded-lg flex items-center justify-center hover:border-primary transition-colors">
-                            {logoPreview ? (
-                              <img
-                                src={logoPreview}
-                                alt="Logo preview"
-                                className="w-full h-full object-cover rounded-lg"
-                              />
-                            ) : (
-                              <Upload className="h-6 w-6 text-muted-foreground" />
-                            )}
+                        {logoUrl ? (
+                          <div className="w-20 h-20 border-2 border-dashed border-muted-foreground rounded-lg flex items-center justify-center relative group">
+                            <img
+                              src={logoUrl}
+                              alt="Logo preview"
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLogoUrl(null)
+                                setValue('logoUrl', undefined)
+                              }}
+                              className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
                           </div>
-                        </Label>
+                        ) : (
+                          <UploadButton
+                            endpoint="merchantLogo"
+                            onClientUploadComplete={handleLogoUpload}
+                            onUploadError={(error: Error) => {
+                              console.error('Upload error:', error)
+                              setError('Failed to upload logo. Please try again.')
+                            }}
+                            appearance={{
+                              button: "w-20 h-20 border-2 border-dashed border-muted-foreground rounded-lg flex items-center justify-center hover:border-primary transition-colors bg-transparent",
+                              allowedContent: "hidden"
+                            }}
+                          />
+                        )}
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">
@@ -356,9 +366,11 @@ export default function MerchantRegisterPage() {
                         <p className="text-xs text-muted-foreground">
                           Recommended: 200x200px, PNG or JPG
                         </p>
-                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                          Note: Logo upload preview only - not saved yet
-                        </p>
+                        {logoUrl && (
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                            ✓ Logo uploaded successfully
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
