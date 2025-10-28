@@ -86,7 +86,7 @@ export default function LoginPage() {
           </Link>
           <div className="flex items-center space-x-2 mb-2">
             <div className="h-8 w-8 rounded bg-primary"></div>
-            <span className="text-2xl font-bold">Ethiopia E-commerce</span>
+            <span className="text-2xl font-bold">MAJET</span>
           </div>
           <p className="text-muted-foreground">Sign in to your account</p>
         </div>

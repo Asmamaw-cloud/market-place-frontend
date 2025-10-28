@@ -19,7 +19,7 @@ export function Footer() {
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              Ethiopia's premier e-commerce platform with local payment methods and unit-aware catalog.
+              Ethiopia's premier Marketplace platform with local payment methods and unit-aware catalog.
             </p>
             <div className="flex space-x-4">
               <Facebook className="h-5 w-5 text-muted-foreground hover:text-primary cursor-pointer" />

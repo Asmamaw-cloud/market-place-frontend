@@ -59,9 +59,12 @@ export default function MerchantRegisterPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [serviceAreas, setServiceAreas] = useState<string[]>([])
   const [newServiceArea, setNewServiceArea] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
+  const [isGettingLocation, setIsGettingLocation] = useState(false)
 
   const router = useRouter()
-  const { isAuthenticated, isUser } = useAuth()
+  const { isAuthenticated, isUser, user, isLoading: authLoading } = useAuth()
   const { createMerchant } = useMerchants()
 
   const {
@@ -76,9 +79,10 @@ export default function MerchantRegisterPage() {
       displayName: '',
       legalName: '',
       description: '',
+      serviceAreas: [],
       lat: undefined,
       lon: undefined,
-      serviceAreas: []
+      logoUrl: undefined
     }
   })
 
@@ -113,9 +117,12 @@ export default function MerchantRegisterPage() {
 
   const handleGetCurrentLocation = async () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by this browser')
+      setLocationError('Geolocation is not supported by this browser')
       return
     }
+
+    setLocationError(null) // Clear any previous errors
+    setIsGettingLocation(true)
 
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -129,9 +136,23 @@ export default function MerchantRegisterPage() {
       const { latitude, longitude } = position.coords
       setValue('lat', latitude)
       setValue('lon', longitude)
-    } catch (error) {
+      setLocationError(null) // Clear any errors on success
+    } catch (error: any) {
       console.error('Error getting location:', error)
-      alert('Unable to get your current location')
+      
+      // Handle different error codes with user-friendly messages
+      let errorMessage = 'Unable to get your current location'
+      if (error.code === 1) {
+        errorMessage = 'Location permission denied. Please allow location access in your browser settings or register without location.'
+      } else if (error.code === 2) {
+        errorMessage = 'Location unavailable. Please check your device location settings.'
+      } else if (error.code === 3) {
+        errorMessage = 'Location request timed out. Please try again.'
+      }
+      
+      setLocationError(errorMessage)
+    } finally {
+      setIsGettingLocation(false)
     }
   }
 
@@ -141,21 +162,66 @@ export default function MerchantRegisterPage() {
       return
     }
 
+    // Double-check authentication before making API call
+    if (!user?.id) {
+      console.error('User ID not available')
+      router.push('/login')
+      return
+    }
+
+    setError(null) // Clear any previous errors
     setIsSubmitting(true)
     try {
+      // Filter out undefined, null, and empty values
+      const cleanData = Object.fromEntries(
+        Object.entries(data).filter(([key, value]) => {
+          // Keep all defined values except lat/lon if they're undefined
+          if (key === 'lat' || key === 'lon') {
+            return value !== undefined && value !== null && value !== ''
+          }
+          return value !== undefined && value !== null && value !== ''
+        })
+      )
+      
       const merchantData = {
-        ...data,
+        ...cleanData,
         logoUrl: logoPreview, // In a real app, you'd upload this to a server
         serviceAreas
       }
 
+      console.log('=== FRONTEND DEBUG ===')
+      console.log('Original form data:', data)
+      console.log('Cleaned data:', cleanData)
+      console.log('Final merchant data:', merchantData)
+      console.log('User authenticated:', isAuthenticated)
+      console.log('User ID:', user?.id)
+      console.log('=== END FRONTEND DEBUG ===')
+      
       await createMerchant(merchantData)
       router.push('/merchant/dashboard')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create merchant:', error)
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create merchant account. Please try again.'
+      setError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (authLoading) {
+    return (
+      <MainLayout>
+        <div className="container py-8">
+          <div className="text-center">
+            <Loader2 className="h-16 w-16 mx-auto text-muted-foreground mb-4 animate-spin" />
+            <h1 className="text-2xl font-bold mb-2">Loading...</h1>
+            <p className="text-muted-foreground">
+              Please wait while we verify your authentication
+            </p>
+          </div>
+        </div>
+      </MainLayout>
+    )
   }
 
   if (!isAuthenticated) {
@@ -197,6 +263,12 @@ export default function MerchantRegisterPage() {
         </div>
 
         <div className="max-w-2xl mx-auto">
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -288,25 +360,47 @@ export default function MerchantRegisterPage() {
                   <h3 className="text-lg font-semibold">Location Information</h3>
                   
                   <div className="space-y-2">
-                    <Label>Store Location</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Store Location</Label>
+                      <span className="text-xs text-muted-foreground">(Optional)</span>
+                    </div>
                     <div className="flex items-center space-x-2">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={handleGetCurrentLocation}
+                        disabled={isGettingLocation}
                         className="flex-1"
                       >
-                        <MapPin className="h-4 w-4 mr-2" />
-                        Use Current Location
+                        {isGettingLocation ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Getting Location...
+                          </>
+                        ) : (
+                          <>
+                            <MapPin className="h-4 w-4 mr-2" />
+                            Use Current Location
+                          </>
+                        )}
                       </Button>
                     </div>
-                    {(watchedLat && watchedLon) && (
-                      <div className="p-3 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">
-                          Location: {watchedLat.toFixed(6)}, {watchedLon.toFixed(6)}
+                    {locationError && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{locationError}</AlertDescription>
+                      </Alert>
+                    )}
+                    {(watchedLat && watchedLon) && !locationError && (
+                      <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                        <p className="text-sm text-green-800 dark:text-green-200 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Location captured: {watchedLat.toFixed(6)}, {watchedLon.toFixed(6)}
                         </p>
                       </div>
                     )}
+                    <p className="text-xs text-muted-foreground">
+                      Adding your location helps customers find your store. You can skip this and add it later.
+                    </p>
                   </div>
                 </div>
 

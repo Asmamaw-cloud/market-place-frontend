@@ -14,7 +14,7 @@ export default function HomePage() {
           <div className="container">
             <div className="max-w-3xl mx-auto text-center">
               <h1 className="text-4xl md:text-6xl font-bold mb-6">
-                Ethiopia's Premier E-commerce Platform
+                Ethiopia's Premier Marketplace Platform
               </h1>
               <p className="text-xl text-muted-foreground mb-8">
                 Shop with local merchants, pay with Telebirr, Chapa, or Amole. 

@@ -14,6 +14,14 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   ShoppingCart,
   User,
   Menu,
@@ -22,7 +30,18 @@ import {
   MessageCircle,
   Store,
   Settings,
-  LogOut
+  LogOut,
+  Heart,
+  MapPin,
+  CreditCard,
+  Truck,
+  Star,
+  HelpCircle,
+  ChevronDown,
+  Package,
+  BarChart3,
+  FileText,
+  Shield
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -45,11 +64,25 @@ export function Navigation() {
     { name: 'Merchants', href: '/merchants' },
   ]
 
+  const customerAccountItems = [
+    { name: 'Orders', href: '/orders', icon: Truck },
+    { name: 'Wishlist', href: '/wishlist', icon: Heart },
+    { name: 'Addresses', href: '/profile/addresses', icon: MapPin },
+    { name: 'Loyalty', href: '/profile/loyalty', icon: Star },
+    { name: 'Reviews', href: '/profile/reviews', icon: Star },
+    { name: 'Help', href: '/help', icon: HelpCircle },
+  ]
+
   const merchantNavItems = [
     { name: 'Dashboard', href: '/merchant/dashboard' },
     { name: 'Products', href: '/merchant/products' },
     { name: 'Orders', href: '/merchant/orders' },
     { name: 'Chat', href: '/merchant/chat' },
+  ]
+
+  const merchantAccountItems = [
+    { name: 'Analytics', href: '/merchant/analytics', icon: BarChart3 },
+    { name: 'Settings', href: '/merchant/settings', icon: Settings },
   ]
 
   const adminNavItems = [
@@ -59,10 +92,22 @@ export function Navigation() {
     { name: 'Reports', href: '/admin/chat/reports' },
   ]
 
+  const adminAccountItems = [
+    { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+    { name: 'System', href: '/admin/system', icon: Shield },
+    { name: 'Settings', href: '/admin/settings', icon: Settings },
+  ]
+
   const getNavItems = () => {
     if (isAdminRoute) return adminNavItems
     if (isMerchantRoute) return merchantNavItems
     return customerNavItems
+  }
+
+  const getAccountItems = () => {
+    if (isAdminRoute) return adminAccountItems
+    if (isMerchantRoute) return merchantAccountItems
+    return customerAccountItems
   }
 
   const handleLogout = () => {
@@ -99,6 +144,66 @@ export function Navigation() {
               {item.name}
             </Link>
           ))}
+          
+          {/* Additional navigation items for customers */}
+          {isCustomerRoute && isAuthenticated && (
+            <>
+              <Link href="/orders">
+                <Button variant="ghost" size="sm" className="text-sm">
+                  <Truck className="h-4 w-4 mr-2" />
+                  Orders
+                </Button>
+              </Link>
+              <Link href="/wishlist">
+                <Button variant="ghost" size="sm" className="text-sm">
+                  <Heart className="h-4 w-4 mr-2" />
+                  Wishlist
+                </Button>
+              </Link>
+              <Link href="/help">
+                <Button variant="ghost" size="sm" className="text-sm">
+                  <HelpCircle className="h-4 w-4 mr-2" />
+                  Help
+                </Button>
+              </Link>
+            </>
+          )}
+
+          {/* Additional navigation items for merchants */}
+          {isMerchantRoute && isAuthenticated && (
+            <>
+              <Link href="/merchant/analytics">
+                <Button variant="ghost" size="sm" className="text-sm">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Analytics
+                </Button>
+              </Link>
+              <Link href="/merchant/settings">
+                <Button variant="ghost" size="sm" className="text-sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </Button>
+              </Link>
+            </>
+          )}
+
+          {/* Additional navigation items for admins */}
+          {isAdminRoute && isAuthenticated && (
+            <>
+              <Link href="/admin/analytics">
+                <Button variant="ghost" size="sm" className="text-sm">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Analytics
+                </Button>
+              </Link>
+              <Link href="/admin/system">
+                <Button variant="ghost" size="sm" className="text-sm">
+                  <Shield className="h-4 w-4 mr-2" />
+                  System
+                </Button>
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Right side actions */}
@@ -156,11 +261,53 @@ export function Navigation() {
           {/* User Menu */}
           {isAuthenticated ? (
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium">{user?.name || user?.email}</span>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
+              <span className="text-sm font-medium hidden lg:block">{user?.name || user?.email}</span>
+              
+              {/* Account Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-1">
+                    <User className="h-4 w-4" />
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  {/* Account Items */}
+                  {getAccountItems().map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <DropdownMenuItem key={item.name} asChild>
+                        <Link href={item.href} className="flex items-center">
+                          <Icon className="h-4 w-4 mr-2" />
+                          {item.name}
+                        </Link>
+                      </DropdownMenuItem>
+                    )
+                  })}
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* Quick Actions */}
+                  {isCustomerRoute && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/merchant/register" className="flex items-center">
+                        <Store className="h-4 w-4 mr-2" />
+                        Become a Merchant
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ) : (
             <div className="flex items-center space-x-2">

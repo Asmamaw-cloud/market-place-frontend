@@ -98,7 +98,7 @@ export default function SignupPage() {
             Create your account
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Join Ethiopia's premier e-commerce platform
+            Join Ethiopia's premier Marketplace platform
           </p>
         </div>
 
