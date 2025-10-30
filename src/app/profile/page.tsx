@@ -41,7 +41,7 @@ export default function ProfilePage() {
       setFormData({
         name: user.name || '',
         email: user.email || '',
-        phone: user.phone
+        phone: user.phone || ''
       })
     }
   }, [user])
@@ -56,7 +56,7 @@ export default function ProfilePage() {
       setFormData({
         name: user.name || '',
         email: user.email || '',
-        phone: user.phone
+        phone: user.phone || ''
       })
     }
   }

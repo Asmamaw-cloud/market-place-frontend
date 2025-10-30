@@ -54,8 +54,8 @@ export function BulkOrderManager({ className }: BulkOrderManagerProps) {
         getBulkOrders(),
         getGroupBuys()
       ])
-      setBulkOrders(orders)
-      setGroupBuys(groupBuyData)
+      setBulkOrders(orders.bulkOrders || [])
+      setGroupBuys(groupBuyData.groupBuys || [])
     } catch (error) {
       console.error('Failed to load bulk order data:', error)
     } finally {

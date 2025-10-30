@@ -31,7 +31,8 @@ export function WishlistButton({
     wishlists, 
     addToWishlist, 
     removeFromWishlist, 
-    checkProductInWishlist 
+    checkProductInWishlist,
+    createWishlist
   } = useWishlist()
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export function WishlistButton({
     if (wishlists.length === 0) {
       // Create default wishlist first
       try {
-        await addToWishlist('default', {
+        await createWishlist({
           name: 'My Wishlist',
           description: 'My favorite items',
           isPublic: false

@@ -49,9 +49,21 @@ export default function LoginPage() {
     
     const result = await verifyOtp(email, otp)
     if (result.type === 'auth/verifyOtp/fulfilled') {
+      // Get user role from the payload
+      const user = (result.payload as any)?.user
+      const userRole = user?.role
+      
       // Small delay to ensure state is updated
       setTimeout(() => {
-        router.push('/')
+        // Redirect based on user role
+        if (userRole === 'MERCHANT') {
+          router.push('/merchant/dashboard')
+        } else if (userRole === 'ADMIN') {
+          router.push('/admin/dashboard')
+        } else {
+          // Default to home page for regular users
+          router.push('/')
+        }
       }, 100)
     }
   }

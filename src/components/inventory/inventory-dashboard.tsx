@@ -45,8 +45,8 @@ export function InventoryDashboard({ className }: InventoryDashboardProps) {
       loadInventoryLots()
       loadInventoryMovements()
       loadInventoryLocations()
-      loadInventoryAnalytics().then(setAnalytics).catch(console.error)
-      loadStockAlerts().then(setAlerts).catch(console.error)
+      loadInventoryAnalytics().then((data) => setAnalytics(data.analytics as any || null)).catch(console.error)
+      loadStockAlerts().then((data) => setAlerts(data.alerts as any || [])).catch(console.error)
     }
   }, [isAuthenticated, loadInventoryLots, loadInventoryMovements, loadInventoryLocations, loadInventoryAnalytics, loadStockAlerts])
 

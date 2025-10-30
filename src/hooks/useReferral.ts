@@ -7,7 +7,7 @@ import {
   deleteReferralCode,
   fetchReferrals,
   fetchReferralStats,
-  useReferralCode as useReferralCodeAction,
+  useReferralCode as applyReferralCodeAction,
   clearError,
 } from '@/store/slices/referralSlice'
 
@@ -89,9 +89,9 @@ export function useReferral() {
     }
   }, [dispatch])
 
-  const useReferralCodeData = useCallback(async (code: string, orderId?: string) => {
+  const applyReferralCode = useCallback(async (code: string, orderId?: string) => {
     try {
-      const result = await dispatch(useReferralCodeAction({ code, orderId })).unwrap()
+      const result = await dispatch(applyReferralCodeAction({ code, orderId })).unwrap()
       return result
     } catch (error) {
       console.error('Failed to use referral code:', error)
@@ -114,7 +114,7 @@ export function useReferral() {
     getReferralCode: getReferralCodeData,
     getReferrals: getReferralsData,
     getReferralStats: getReferralStatsData,
-    useReferralCode: useReferralCodeData,
+    useReferralCode: applyReferralCode,
     clearError: () => dispatch(clearError()),
   }
 }

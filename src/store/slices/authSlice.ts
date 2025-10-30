@@ -103,7 +103,8 @@ export const loadUser = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await usersApi.getProfile()
-      return response.data
+      // Check if response.data is the user object directly or wrapped
+      return response.data.data || response.data
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to load user')
     }

@@ -51,9 +51,9 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
         getReferrals(),
         getReferralStats()
       ])
-      setReferralCode(code)
-      setReferrals(referralsData)
-      setStats(statsData)
+      setReferralCode(code.referralCode as any || null)
+      setReferrals(referralsData.referrals as any || [])
+      setStats(statsData.stats as any || null)
     } catch (error) {
       console.error('Failed to load referral data:', error)
     } finally {
@@ -67,7 +67,7 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
         code: newCode || undefined,
         maxUses: maxUses || undefined
       })
-      setReferralCode(code)
+      setReferralCode(code.referralCode as any || null)
       setNewCode('')
       setMaxUses(undefined)
       setIsCreateCodeDialogOpen(false)

@@ -36,7 +36,8 @@ export function WishlistManager({ className }: WishlistManagerProps) {
     updateWishlist, 
     deleteWishlist, 
     shareWishlist,
-    addToCartFromWishlist 
+    addToCartFromWishlist,
+    removeFromWishlist
   } = useWishlist()
 
   const handleCreateWishlist = async () => {

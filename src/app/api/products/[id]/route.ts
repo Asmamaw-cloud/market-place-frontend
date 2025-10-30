@@ -4,10 +4,10 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3004';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const backendUrl = `${BACKEND_URL}/api/products/${id}`;
     
     console.log('Fetching product from:', backendUrl);

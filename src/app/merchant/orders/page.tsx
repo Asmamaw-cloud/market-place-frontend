@@ -28,7 +28,7 @@ import { UnitDisplay } from '@/components/ui/unit-display'
 import { cn } from '@/lib/utils'
 
 const orderStatuses = [
-  { value: '', label: 'All Status' },
+  { value: 'all', label: 'All Status' },
   { value: 'PENDING', label: 'Pending' },
   { value: 'CONFIRMED', label: 'Confirmed' },
   { value: 'FULFILLING', label: 'Fulfilling' },
@@ -77,8 +77,8 @@ const getStatusColor = (status: string) => {
 
 export default function MerchantOrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [dateFilter, setDateFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [dateFilter, setDateFilter] = useState('all')
 
   const router = useRouter()
   const { isAuthenticated, isMerchant } = useAuth()
@@ -110,8 +110,8 @@ export default function MerchantOrdersPage() {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           order.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           order.user?.phone?.includes(searchTerm)
-    const matchesStatus = !statusFilter || order.status === statusFilter
-    const matchesDate = !dateFilter || true // TODO: Implement date filtering
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter
+    const matchesDate = dateFilter === 'all' || true // TODO: Implement date filtering
     
     return matchesSearch && matchesStatus && matchesDate
   }) || []
@@ -230,7 +230,7 @@ export default function MerchantOrdersPage() {
                   <SelectValue placeholder="All Time" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Time</SelectItem>
+                  <SelectItem value="all">All Time</SelectItem>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="week">This Week</SelectItem>
                   <SelectItem value="month">This Month</SelectItem>
@@ -267,7 +267,7 @@ export default function MerchantOrdersPage() {
                 <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Orders Found</h3>
                 <p className="text-muted-foreground">
-                  {searchTerm || statusFilter || dateFilter 
+                  {searchTerm || (statusFilter !== 'all') || (dateFilter !== 'all')
                     ? 'No orders match your filters'
                     : 'You don\'t have any orders yet'
                   }

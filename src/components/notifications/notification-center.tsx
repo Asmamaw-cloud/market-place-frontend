@@ -1,21 +1,21 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import { 
   Bell, 
-  CheckCircle, 
-  AlertCircle, 
-  Info, 
   ShoppingCart, 
   MessageSquare,
   Package,
   CreditCard,
-  X,
   Check,
   Trash2
 } from 'lucide-react'
@@ -24,9 +24,8 @@ import { useNotifications } from '@/hooks/useNotifications'
 import { Notification } from '@/types'
 import { cn } from '@/lib/utils'
 
-interface NotificationCenterProps {
-  isOpen: boolean
-  onClose: () => void
+interface NotificationDropdownProps {
+  children: React.ReactNode
   className?: string
 }
 
@@ -40,8 +39,6 @@ const getNotificationIcon = (type: string) => {
       return <CreditCard className="h-4 w-4" />
     case 'shipment':
       return <Package className="h-4 w-4" />
-    case 'system':
-      return <Info className="h-4 w-4" />
     default:
       return <Bell className="h-4 w-4" />
   }
@@ -57,15 +54,13 @@ const getNotificationColor = (type: string) => {
       return 'text-purple-600'
     case 'shipment':
       return 'text-orange-600'
-    case 'system':
-      return 'text-gray-600'
     default:
       return 'text-gray-600'
   }
 }
 
-export function NotificationCenter({ isOpen, onClose, className }: NotificationCenterProps) {
-  const [activeTab, setActiveTab] = useState('all')
+export function NotificationDropdown({ children, className }: NotificationDropdownProps) {
+  const [open, setOpen] = useState(false)
   const { isAuthenticated } = useAuth()
   const { 
     notifications, 
@@ -74,34 +69,16 @@ export function NotificationCenter({ isOpen, onClose, className }: NotificationC
     markAsRead, 
     markAllAsRead, 
     deleteNotification,
-    clearAllNotifications 
   } = useNotifications()
 
   useEffect(() => {
-    if (isOpen && isAuthenticated) {
-      // Fetch notifications when center opens
-      // This would typically be handled by the useNotifications hook
+    if (open && isAuthenticated) {
+      // Fetch notifications when dropdown opens
     }
-  }, [isOpen, isAuthenticated])
+  }, [open, isAuthenticated])
 
-  if (!isOpen) return null
-
-  const filteredNotifications = notifications?.filter(notification => {
-    switch (activeTab) {
-      case 'unread':
-        return !notification.read
-      case 'orders':
-        return notification.type === 'order'
-      case 'messages':
-        return notification.type === 'message'
-      case 'payments':
-        return notification.type === 'payment'
-      case 'shipments':
-        return notification.type === 'shipment'
-      default:
-        return true
-    }
-  }) || []
+  const unreadNotifications = notifications?.filter(n => !n.read) || []
+  const recentNotifications = notifications?.slice(0, 5) || []
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
@@ -127,151 +104,128 @@ export function NotificationCenter({ isOpen, onClose, className }: NotificationC
     }
   }
 
-  const handleClearAll = async () => {
-    try {
-      await clearAllNotifications()
-    } catch (error) {
-      console.error('Failed to clear all notifications:', error)
-    }
-  }
-
   return (
-    <div className={cn('fixed inset-0 z-50 ', className)}>
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-background shadow-lg">
-        <div className="flex h-full flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b p-4">
-            <div className="flex items-center space-x-2">
-              <Bell className="h-5 w-5" />
-              <h2 className="text-lg font-semibold">Notifications</h2>
-              {unreadCount > 0 && (
-                <Badge variant="destructive" className="ml-2">
-                  {unreadCount}
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center space-x-2">
-              {unreadCount > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleMarkAllAsRead}
-                >
-                  <Check className="h-4 w-4 mr-1" />
-                  Mark All Read
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onClose}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        {children}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent 
+        align="end" 
+        className={cn("w-80 p-0", className)}
+        sideOffset={8}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center space-x-2">
+            <Bell className="h-5 w-5" />
+            <h3 className="font-semibold">Notifications</h3>
+            {unreadCount > 0 && (
+              <Badge variant="destructive" className="ml-2">
+                {unreadCount}
+              </Badge>
+            )}
           </div>
-
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="unread">Unread</TabsTrigger>
-              <TabsTrigger value="orders">Orders</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="payments">Payments</TabsTrigger>
-              <TabsTrigger value="shipments">Shipments</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={activeTab} className="flex-1 p-0">
-              <ScrollArea className="h-full">
-                <div className="p-4 space-y-3">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : filteredNotifications.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">
-                        {activeTab === 'unread' 
-                          ? 'No unread notifications' 
-                          : 'No notifications found'
-                        }
-                      </p>
-                    </div>
-                  ) : (
-                    filteredNotifications.map((notification) => (
-                      <Card 
-                        key={notification.id} 
-                        className={cn(
-                          'cursor-pointer transition-colors hover:bg-muted/50',
-                          !notification.read && 'bg-blue-50 border-blue-200'
-                        )}
-                        onClick={() => !notification.read && handleMarkAsRead(notification.id)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start space-x-3">
-                            <div className={cn(
-                              'flex-shrink-0 rounded-full p-2',
-                              getNotificationColor(notification.type)
-                            )}>
-                              {getNotificationIcon(notification.type)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium line-clamp-2">
-                                    {notification.title}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                    {notification.message}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-2">
-                                    {new Date(notification.createdAt).toLocaleString()}
-                                  </p>
-                                </div>
-                                <div className="flex items-center space-x-1 ml-2">
-                                  {!notification.read && (
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleDeleteNotification(notification.id)
-                                    }}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
-
-          {/* Footer */}
-          {filteredNotifications.length > 0 && (
-            <div className="border-t p-4">
-              <Button
-                variant="outline"
-                onClick={handleClearAll}
-                className="w-full"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear All Notifications
-              </Button>
-            </div>
+          {unreadCount > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleMarkAllAsRead}
+              className="h-7 px-2"
+            >
+              <Check className="h-3 w-3 mr-1" />
+              Mark all read
+            </Button>
           )}
         </div>
-      </div>
-    </div>
+
+        {/* Notifications List */}
+        <ScrollArea className="h-[400px]">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          ) : recentNotifications.length === 0 ? (
+            <div className="text-center py-12">
+              <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+              <p className="text-sm text-muted-foreground">No notifications</p>
+            </div>
+          ) : (
+            <div className="p-2">
+              {recentNotifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={cn(
+                    'group relative flex items-start space-x-3 p-3 rounded-lg transition-colors cursor-pointer',
+                    'hover:bg-muted/50',
+                    !notification.read && 'bg-blue-50 dark:bg-blue-950/20'
+                  )}
+                  onClick={() => !notification.read && handleMarkAsRead(notification.id)}
+                >
+                  <div className={cn(
+                    'flex-shrink-0 rounded-full p-2 bg-muted',
+                    getNotificationColor(notification.type)
+                  )}>
+                    {getNotificationIcon(notification.type)}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={cn(
+                        'text-sm font-medium line-clamp-2',
+                        !notification.read && 'font-semibold'
+                      )}>
+                        {notification.title}
+                      </p>
+                      {!notification.read && (
+                        <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-1"></div>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {notification.message}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(notification.createdAt).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteNotification(notification.id)
+                    }}
+                    className="opacity-0 group-hover:opacity-100 h-7 w-7 p-0"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+
+        {/* Footer */}
+        {notifications && notifications.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="p-2">
+              <Button
+                variant="ghost"
+                className="w-full justify-center text-sm"
+                onClick={() => setOpen(false)}
+              >
+                View all notifications
+              </Button>
+            </div>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

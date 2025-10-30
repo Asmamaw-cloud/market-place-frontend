@@ -1,11 +1,32 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ShoppingCart, Truck, Shield, Star } from 'lucide-react'
 import Link from 'next/link'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function HomePage() {
+  const { isAuthenticated, isMerchant, isAdmin } = useAuth()
+  const router = useRouter()
+
+  // Redirect authenticated merchants and admins to their dashboards
+  // Regular users stay on the home page to browse products
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (isMerchant) {
+        router.push('/merchant/dashboard')
+      } else if (isAdmin) {
+        router.push('/admin/dashboard')
+      }
+      // Regular authenticated users can browse the home page and products
+    }
+  }, [isAuthenticated, isMerchant, isAdmin, router])
+
   return (
     <MainLayout>
       <div className="min-h-screen">

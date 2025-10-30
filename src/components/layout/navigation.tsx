@@ -9,7 +9,7 @@ import { useCart } from '@/hooks/useCart'
 import { useChat } from '@/hooks/useChat'
 import { useNotifications } from '@/hooks/useNotifications'
 import { MobileNavigation } from './mobile-navigation'
-import { NotificationCenter } from '@/components/notifications/notification-center'
+import { NotificationDropdown } from '@/components/notifications/notification-center'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -47,21 +47,23 @@ import { cn } from '@/lib/utils'
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const pathname = usePathname()
   const { user, isAuthenticated, logout, isUser, isMerchant, isAdmin } = useAuth()
   const { totalItems } = useCart()
   const { unreadCount } = useChat()
   const { unreadCount: notificationCount } = useNotifications()
 
-  const isCustomerRoute = pathname.startsWith('/') && !pathname.startsWith('/merchant') && !pathname.startsWith('/admin')
-  const isMerchantRoute = pathname.startsWith('/merchant')
-  const isAdminRoute = pathname.startsWith('/admin')
+  const isCustomerRoute = pathname.startsWith('/') && !pathname.startsWith('/merchant/') && !pathname.startsWith('/admin/')
+  const isMerchantRoute = pathname.startsWith('/merchant/')
+  const isAdminRoute = pathname.startsWith('/admin/')
 
   const customerNavItems = [
     { name: 'Home', href: '/' },
     { name: 'Products', href: '/products' },
     { name: 'Merchants', href: '/merchants' },
+    // { name: 'Orders', href: '/orders' },
+    // { name: 'Wishlist', href: '/wishlist' },
+    // { name: 'Help', href: '/help' },
   ]
 
   const customerAccountItems = [
@@ -120,11 +122,11 @@ export function Navigation() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2 ">
-          <Image 
-            src="/logo.svg" 
-            alt="MAJET" 
-            width={34} 
-            height={8} 
+          <Image
+            src="/logo.svg"
+            alt="MAJET"
+            width={34}
+            height={8}
             className="h-10 w-full"
           />
           {/* <span className="text-xl font-bold">Ethiopian E-commerce</span> */}
@@ -144,7 +146,7 @@ export function Navigation() {
               {item.name}
             </Link>
           ))}
-          
+
           {/* Additional navigation items for customers */}
           {isCustomerRoute && isAuthenticated && (
             <>
@@ -243,26 +245,27 @@ export function Navigation() {
 
           {/* Notifications */}
           {isAuthenticated && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-              onClick={() => setIsNotificationOpen(true)}
-            >
-              <Bell className="h-4 w-4" />
-              {notificationCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                  {notificationCount}
-                </Badge>
-              )}
-            </Button>
+            <NotificationDropdown>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
+              >
+                <Bell className="h-4 w-4" />
+                {notificationCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                    {notificationCount}
+                  </Badge>
+                )}
+              </Button>
+            </NotificationDropdown>
           )}
 
           {/* User Menu */}
           {isAuthenticated ? (
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium hidden lg:block">{user?.name || user?.email}</span>
-              
+
               {/* Account Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -274,7 +277,7 @@ export function Navigation() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  
+
                   {/* Account Items */}
                   {getAccountItems().map((item) => {
                     const Icon = item.icon
@@ -287,9 +290,9 @@ export function Navigation() {
                       </DropdownMenuItem>
                     )
                   })}
-                  
+
                   <DropdownMenuSeparator />
-                  
+
                   {/* Quick Actions */}
                   {isCustomerRoute && !isMerchant && !isAdmin && (
                     <DropdownMenuItem asChild>
@@ -299,9 +302,9 @@ export function Navigation() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  
+
                   <DropdownMenuSeparator />
-                  
+
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                     <LogOut className="h-4 w-4 mr-2" />
                     Logout
@@ -325,11 +328,6 @@ export function Navigation() {
         </div>
       </div>
 
-      {/* Notification Center */}
-      <NotificationCenter
-        isOpen={isNotificationOpen}
-        onClose={() => setIsNotificationOpen(false)}
-      />
     </header>
   )
 }
