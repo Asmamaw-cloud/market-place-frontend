@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MainLayout } from '@/components/layout/main-layout'
 import { ProductCard } from '@/components/products/product-card'
@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 export default function ProductsPage() {
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
-  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedMerchant, setSelectedMerchant] = useState('')
   const [selectedUnitType, setSelectedUnitType] = useState<UnitType | 'all'>('all')
   const [minPrice, setMinPrice] = useState('')
@@ -26,6 +26,8 @@ export default function ProductsPage() {
   const [sortBy, setSortBy] = useState('newest')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
+  const [priceRangeCalculated, setPriceRangeCalculated] = useState(false)
+  const [allProducts, setAllProducts] = useState<any[]>([])
 
   const {
     products,
@@ -39,69 +41,141 @@ export default function ProductsPage() {
     setPagination
   } = useProducts()
 
-  // Load products on mount and when filters change
+  // Load all products on mount
   useEffect(() => {
-    const filters = {
-      category: selectedCategory || undefined,
-      merchant: selectedMerchant || undefined,
-      unitType: selectedUnitType !== 'all' ? selectedUnitType : undefined,
-      minPrice: minPrice ? parseFloat(minPrice) : undefined,
-      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+    loadProducts({
+      page: 1,
+      limit: 1000 // Load a large batch for frontend filtering
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Store all products when they're loaded
+  useEffect(() => {
+    if (products.length > 0) {
+      // Replace all products with the loaded batch
+      // Since we're loading with limit 1000, this should get most/all products
+      setAllProducts(products)
+    }
+  }, [products])
+
+  // Calculate and prefill min/max prices from all products (only on initial load)
+  useEffect(() => {
+    if (allProducts.length > 0 && !priceRangeCalculated && minPrice === '' && maxPrice === '') {
+      const allPrices: number[] = []
+      allProducts.forEach(product => {
+        product.skus?.forEach((sku: any) => {
+          if (sku.active && sku.pricePerCanonicalUnit) {
+            // Convert from cents to ETB
+            const priceInETB = sku.pricePerCanonicalUnit / 100
+            allPrices.push(priceInETB)
+          }
+        })
+      })
+      
+      if (allPrices.length > 0) {
+        const min = Math.min(...allPrices)
+        const max = Math.max(...allPrices)
+        setMinPrice(min.toString())
+        setMaxPrice(max.toString())
+        setPriceRangeCalculated(true)
+      }
+    }
+  }, [allProducts, priceRangeCalculated, minPrice, maxPrice])
+
+  // Frontend filtering with useMemo for performance
+  const filteredProducts = useMemo(() => {
+    let filtered = [...allProducts]
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(product => 
+        product.name.toLowerCase().includes(query) ||
+        product.description?.toLowerCase().includes(query)
+      )
     }
 
-    setFilters(filters)
-    setSearchQueryAction(searchQuery)
-    
-    loadProducts({
-      q: searchQuery || undefined,
-      ...filters,
-      page: 1,
-      limit: 20
-    })
-  }, [searchQuery, selectedCategory, selectedMerchant, selectedUnitType, minPrice, maxPrice])
+    // Category filter
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(product => product.categoryId === selectedCategory)
+    }
+
+    // Merchant filter
+    if (selectedMerchant) {
+      filtered = filtered.filter(product => product.merchantId === selectedMerchant)
+    }
+
+    // Unit Type filter
+    if (selectedUnitType !== 'all') {
+      filtered = filtered.filter(product => 
+        product.skus?.some((sku: any) => sku.unitType === selectedUnitType && sku.active)
+      )
+    }
+
+    // Price filter
+    if (minPrice || maxPrice) {
+      const min = minPrice ? parseFloat(minPrice) : 0
+      const max = maxPrice ? parseFloat(maxPrice) : Infinity
+      
+      // Only filter if values are valid numbers
+      if (!isNaN(min) && !isNaN(max)) {
+        filtered = filtered.filter(product => {
+          return product.skus?.some((sku: any) => {
+            if (!sku.active) return false
+            const priceInETB = sku.pricePerCanonicalUnit / 100
+            return priceInETB >= min && priceInETB <= max
+          })
+        })
+      }
+    }
+
+    return filtered
+  }, [allProducts, searchQuery, selectedCategory, selectedMerchant, selectedUnitType, minPrice, maxPrice])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    loadProducts({
-      q: searchQuery || undefined,
-      category: selectedCategory || undefined,
-      merchant: selectedMerchant || undefined,
-      unitType: selectedUnitType !== 'all' ? selectedUnitType : undefined,
-      minPrice: minPrice ? parseFloat(minPrice) : undefined,
-      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
-      page: 1,
-      limit: 20
-    })
-  }
-
-  const handleLoadMore = () => {
-    loadProducts({
-      q: searchQuery || undefined,
-      category: selectedCategory || undefined,
-      merchant: selectedMerchant || undefined,
-      unitType: selectedUnitType !== 'all' ? selectedUnitType : undefined,
-      minPrice: minPrice ? parseFloat(minPrice) : undefined,
-      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
-      page: pagination.page + 1,
-      limit: 20
-    })
+    // Frontend filtering, no need to reload
   }
 
   const clearFilters = () => {
     setSearchQuery('')
-    setSelectedCategory('')
+    setSelectedCategory('all')
     setSelectedMerchant('')
     setSelectedUnitType('all')
+    // Recalculate price range when clearing filters
+    if (allProducts.length > 0) {
+      const allPrices: number[] = []
+      allProducts.forEach(product => {
+        product.skus?.forEach((sku: any) => {
+          if (sku.active && sku.pricePerCanonicalUnit) {
+            const priceInETB = sku.pricePerCanonicalUnit / 100
+            allPrices.push(priceInETB)
+          }
+        })
+      })
+      if (allPrices.length > 0) {
+        const min = Math.min(...allPrices)
+        const max = Math.max(...allPrices)
+        setMinPrice(min.toString())
+        setMaxPrice(max.toString())
+        setPriceRangeCalculated(true)
+      } else {
+        setMinPrice('')
+        setMaxPrice('')
+      }
+    } else {
     setMinPrice('')
     setMaxPrice('')
+    }
     setFilters({})
   }
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedMerchant || selectedUnitType !== 'all' || minPrice || maxPrice
+  const hasActiveFilters = searchQuery || selectedCategory !== 'all' || selectedMerchant || selectedUnitType !== 'all' || minPrice || maxPrice
 
   return (
     <MainLayout>
-      <div className="container py-8">
+      <div className="container py-8 px-6 sm:px-8 lg:px-14">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Products</h1>
@@ -147,7 +221,7 @@ export default function ProductsPage() {
                         <SelectValue placeholder="All Categories" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Categories</SelectItem>
+                        <SelectItem value="all">All Categories</SelectItem>
                         {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             {category.name}
@@ -206,7 +280,7 @@ export default function ProductsPage() {
                     )}
                     {hasActiveFilters && (
                       <span className="text-sm text-muted-foreground">
-                        {pagination.total} products found
+                        {filteredProducts.length} products found
                       </span>
                     )}
                   </div>
@@ -220,7 +294,7 @@ export default function ProductsPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <span className="text-sm text-muted-foreground">
-              {isLoading ? 'Loading...' : `${pagination.total} products found`}
+              {isLoading ? 'Loading...' : `${filteredProducts.length} products found`}
             </span>
             {hasActiveFilters && (
               <Badge variant="outline" onClick={clearFilters} className="cursor-pointer">
@@ -273,7 +347,7 @@ export default function ProductsPage() {
             <p className="text-destructive mb-4">{error}</p>
             <Button onClick={() => loadProducts()}>Try Again</Button>
           </div>
-        ) : products.length === 0 ? (
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">No products found</p>
             {hasActiveFilters && (
@@ -281,14 +355,13 @@ export default function ProductsPage() {
             )}
           </div>
         ) : (
-          <>
             <div className={cn(
               "grid gap-6",
               viewMode === 'grid' 
                 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                 : "grid-cols-1"
             )}>
-              {products.map((product) => (
+            {filteredProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -296,20 +369,6 @@ export default function ProductsPage() {
                 />
               ))}
             </div>
-
-            {/* Load More Button */}
-            {pagination.hasMore && (
-              <div className="text-center mt-8">
-                <Button
-                  onClick={handleLoadMore}
-                  disabled={isLoading}
-                  variant="outline"
-                >
-                  {isLoading ? 'Loading...' : 'Load More Products'}
-                </Button>
-              </div>
-            )}
-          </>
         )}
       </div>
     </MainLayout>

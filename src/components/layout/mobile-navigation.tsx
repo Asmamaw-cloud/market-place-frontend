@@ -38,14 +38,8 @@ interface MobileNavigationProps {
 const customerNavItems = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Products', href: '/products', icon: Package },
-  { name: 'Cart', href: '/cart', icon: ShoppingCart },
-  { name: 'Orders', href: '/orders', icon: Truck },
-  { name: 'Profile', href: '/profile', icon: User },
-  { name: 'Addresses', href: '/profile/addresses', icon: MapPin },
-  { name: 'Loyalty', href: '/profile/loyalty', icon: Star },
-  { name: 'Reviews', href: '/profile/reviews', icon: Star },
-  { name: 'Chat', href: '/chat', icon: MessageSquare },
-  { name: 'Help', href: '/help', icon: HelpCircle }
+  { name: 'Merchants', href: '/merchants', icon: Store },
+  { name: 'Cart', href: '/cart', icon: ShoppingCart }
 ]
 
 const merchantNavItems = [
@@ -178,6 +172,16 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
               <h3 className="text-sm font-medium text-muted-foreground mb-3">
                 Quick Actions
               </h3>
+              
+              {/* Search - Available in mobile menu */}
+              <Button
+                variant="outline"
+                className="w-full justify-start h-12"
+                onClick={() => handleNavClick('/products')}
+              >
+                <Search className="h-5 w-5 mr-3" />
+                <span>Search</span>
+              </Button>
               
               {!isAuthenticated ? (
                 <div className="space-y-2">

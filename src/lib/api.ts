@@ -72,7 +72,7 @@ api.interceptors.response.use(
           
           // Only redirect to login if not already on a public route
           if (!isPublicRoute) {
-            window.location.href = '/login';
+          window.location.href = '/login';
           }
         }
         return Promise.reject(refreshError);

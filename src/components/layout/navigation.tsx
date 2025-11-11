@@ -119,7 +119,7 @@ export function Navigation() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container mx-auto px-4 sm:px-8 lg:px-14 flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2 ">
           <Image
@@ -210,14 +210,14 @@ export function Navigation() {
 
         {/* Right side actions */}
         <div className="flex items-center space-x-4">
-          {/* Search */}
-          <Button variant="ghost" size="icon">
+          {/* Search - Hidden from navbar, available in mobile menu */}
+          <Button variant="ghost" size="icon" className="hidden">
             <Search className="h-4 w-4" />
           </Button>
 
-          {/* Cart (only for customers) */}
+          {/* Cart - Hidden from navbar, available in mobile menu */}
           {isCustomerRoute && (
-            <Link href="/cart">
+            <Link href="/cart" className="hidden">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-4 w-4" />
                 {totalItems > 0 && (
@@ -308,7 +308,7 @@ export function Navigation() {
               </DropdownMenu>
             </div>
           ) : (
-            <div className="flex items-center space-x-2">
+            <div className="hidden items-center space-x-2">
               <Link href="/login">
                 <Button variant="ghost">Login</Button>
               </Link>

@@ -51,9 +51,25 @@ export const fetchProducts = createAsyncThunk(
     merchant?: string
     page?: number
     limit?: number
+    minPrice?: number
+    maxPrice?: number
+    unitType?: string
   } = {}, { rejectWithValue }) => {
     try {
-      const response = await productsService.getProducts(params)
+      // Convert q to search for the service
+      const serviceParams: any = {
+        ...params,
+        search: params.q
+      }
+      delete serviceParams.q
+      delete serviceParams.merchant
+      
+      // Add merchantId if merchant is provided
+      if (params.merchant && params.merchant !== 'current') {
+        serviceParams.merchantId = params.merchant
+      }
+      
+      const response = await productsService.getProducts(serviceParams)
       return response
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch products')

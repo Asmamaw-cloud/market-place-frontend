@@ -10,6 +10,9 @@ export interface GetProductsParams {
   isActive?: boolean
   sortBy?: 'name' | 'createdAt' | 'price'
   sortOrder?: 'asc' | 'desc'
+  minPrice?: number
+  maxPrice?: number
+  unitType?: string
 }
 
 export interface GetProductsResponse {
@@ -24,12 +27,12 @@ export const productsService = {
   // Get products with filters
   async getProducts(params: GetProductsParams & { merchant?: string } = {}): Promise<GetProductsResponse> {
     try {
-      // If merchant is 'current', use the /me endpoint for authenticated merchant
-      if (params.merchant === 'current') {
-        const { merchant, ...restParams } = params
+    // If merchant is 'current', use the /me endpoint for authenticated merchant
+    if (params.merchant === 'current') {
+      const { merchant, ...restParams } = params
         console.log('[productsService] Fetching products for current merchant with params:', restParams)
         try {
-          const response = await api.get('/products/me', { params: restParams })
+      const response = await api.get('/products/me', { params: restParams })
           console.log('[productsService] Response received:', {
             status: response.status,
             hasData: !!response.data,
@@ -62,13 +65,13 @@ export const productsService = {
           }
           throw error
         }
-      }
-      // Otherwise use regular endpoint with merchantId
-      const { merchant, merchantId, ...restParams } = params
-      const response = await api.get('/products', { 
-        params: { ...restParams, merchantId: merchantId || (merchant !== 'current' ? merchant : undefined) }
-      })
-      return response.data.data || response.data
+    }
+    // Otherwise use regular endpoint with merchantId
+    const { merchant, merchantId, ...restParams } = params
+    const queryParams: any = { ...restParams, merchantId: merchantId || (merchant !== 'current' ? merchant : undefined) }
+    
+    const response = await api.get('/products', { params: queryParams })
+    return response.data.data || response.data
     } catch (error: any) {
       console.error('[productsService] Error fetching products:', {
         message: error.message,

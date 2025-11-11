@@ -100,7 +100,7 @@ export default function MerchantsPage() {
   if (error) {
     return (
       <MainLayout>
-        <div className="container py-8">
+        <div className="container py-8 px-6 sm:px-8 lg:px-14">
           <div className="text-center">
             <Store className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h2 className="text-2xl font-bold mb-2">Error Loading Merchants</h2>
@@ -114,7 +114,7 @@ export default function MerchantsPage() {
 
   return (
     <MainLayout>
-      <div className="container py-8">
+      <div className="container py-8 px-6 sm:px-8 lg:px-14">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Find Merchants</h1>

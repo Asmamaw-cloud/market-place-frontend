@@ -52,7 +52,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen flex flex-col">
       <Navigation />
       
-      <div className="flex flex-1">
+      <div className="flex flex-1 ">
         {/* Sidebar for merchant and admin routes - only if user has appropriate role */}
         {showSidebar && <Sidebar />}
         

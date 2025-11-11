@@ -32,12 +32,12 @@ export default function HomePage() {
       <div className="min-h-screen">
         {/* Hero Section */}
         <section className="bg-gradient-to-r from-primary/10 to-primary/5 py-20">
-          <div className="container">
-            <div className="max-w-3xl mx-auto text-center">
-              <h1 className="text-4xl md:text-6xl font-bold mb-6">
+          <div className="container mx-auto">
+            <div className="max-w-3xl mx-auto text-center px-6">
+              <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold mb-6">
                 Ethiopia's Premier Marketplace Platform
               </h1>
-              <p className="text-xl text-muted-foreground mb-8">
+              <p className="text-base sm:text-xl text-muted-foreground mb-8">
                 Shop with local merchants, pay with Telebirr, Chapa, or Amole. 
                 Unit-aware catalog with KG, Liter, and Meter measurements.
               </p>
@@ -60,10 +60,10 @@ export default function HomePage() {
 
         {/* Features Section */}
         <section className="py-20">
-          <div className="container">
+          <div className="container mx-auto px-14">
             <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold mb-4">Why Choose Us?</h2>
-              <p className="text-xl text-muted-foreground">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-4">Why Choose Us?</h2>
+              <p className="text-base sm:text-xl text-muted-foreground">
                 Built specifically for Ethiopia with local payment methods and measurements
               </p>
             </div>
@@ -122,10 +122,10 @@ export default function HomePage() {
 
         {/* CTA Section */}
         <section className="bg-muted py-20">
-          <div className="container">
-            <div className="max-w-2xl mx-auto text-center">
-              <h2 className="text-3xl font-bold mb-4">Ready to Start Shopping?</h2>
-              <p className="text-xl text-muted-foreground mb-8">
+          <div className="container mx-auto">
+            <div className="max-w-2xl mx-auto text-center px-6">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-4">Ready to Start Shopping?</h2>
+              <p className="text-base sm:text-xl text-muted-foreground mb-8">
                 Join thousands of customers who trust Ethiopia E-commerce for their shopping needs.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">

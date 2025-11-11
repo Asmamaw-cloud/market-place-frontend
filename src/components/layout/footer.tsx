@@ -5,10 +5,10 @@ import Image from 'next/image'
 export function Footer() {
   return (
     <footer className="bg-muted/50 border-t">
-      <div className="container py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Company Info */}
-          <div className="space-y-4">
+      <div className="container py-12 mx-auto px-6 sm:px-8 lg:px-14">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-14">
+          {/* Company Info - Full width on medium, first column on large */}
+          <div className="space-y-4 sm:col-span-3 lg:col-span-1">
             <div className="flex items-center space-x-2">
               <Image
                 src="/logo.svg"
@@ -28,62 +28,65 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Quick Links</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/products" className="text-sm text-muted-foreground hover:text-primary">
-                  Products
-                </Link>
-              </li>
-              <li>
-                <Link href="/merchants" className="text-sm text-muted-foreground hover:text-primary">
-                  Merchants
-                </Link>
-              </li>
-              <li>
-                <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">
-                  Contact
-                </Link>
-              </li>
-            </ul>
-          </div>
+          {/* Quick Links and Customer Service - Side by side on mobile */}
+          <div className="grid grid-cols-2 gap-6 md:contents">
+            {/* Quick Links */}
+            <div className="space-y-4 md:col-span-1">
+              <h3 className="text-lg font-semibold">Quick Links</h3>
+              <ul className="space-y-2">
+                <li>
+                  <Link href="/products" className="text-sm text-muted-foreground hover:text-primary">
+                    Products
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/merchants" className="text-sm text-muted-foreground hover:text-primary">
+                    Merchants
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
+                    About Us
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">
+                    Contact
+                  </Link>
+                </li>
+              </ul>
+            </div>
 
-          {/* Customer Service */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Customer Service</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/help" className="text-sm text-muted-foreground hover:text-primary">
-                  Help Center
-                </Link>
-              </li>
-              <li>
-                <Link href="/shipping" className="text-sm text-muted-foreground hover:text-primary">
-                  Shipping Info
-                </Link>
-              </li>
-              <li>
-                <Link href="/returns" className="text-sm text-muted-foreground hover:text-primary">
-                  Returns
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="text-sm text-muted-foreground hover:text-primary">
-                  FAQ
-                </Link>
-              </li>
-            </ul>
+            {/* Customer Service */}
+            <div className="space-y-4 md:col-span-1">
+              <h3 className="text-lg font-semibold">Customer Service</h3>
+              <ul className="space-y-2">
+                <li>
+                  <Link href="/help" className="text-sm text-muted-foreground hover:text-primary">
+                    Help Center
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/shipping" className="text-sm text-muted-foreground hover:text-primary">
+                    Shipping Info
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/returns" className="text-sm text-muted-foreground hover:text-primary">
+                    Returns
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/faq" className="text-sm text-muted-foreground hover:text-primary">
+                    FAQ
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
 
           {/* Contact Info */}
-          <div className="space-y-4">
+          <div className="space-y-4 md:col-span-1">
             <h3 className="text-lg font-semibold">Contact Info</h3>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
