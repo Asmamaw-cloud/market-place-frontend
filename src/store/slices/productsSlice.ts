@@ -194,7 +194,13 @@ const productsSlice = createSlice({
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.isLoading = false
-        state.error = action.payload as string
+        const errorMessage = action.payload as string || action.error?.message || 'Failed to fetch products'
+        console.error('[productsSlice] fetchProducts rejected:', {
+          payload: action.payload,
+          error: action.error,
+          message: errorMessage
+        })
+        state.error = errorMessage
       })
       
       // Fetch Product

@@ -381,11 +381,11 @@ export default function CreateProductPage() {
                       <div className="space-y-2">
                         <Label htmlFor={`skus.${index}.unitType`}>Unit Type *</Label>
                         <Select
-                          value={field.unitType}
+                          value={watch(`skus.${index}.unitType`) || 'PIECE'}
                           onValueChange={(value: 'PIECE' | 'KG' | 'LITER' | 'METER') => setValue(`skus.${index}.unitType`, value)}
                         >
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Select unit type" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="PIECE">Piece</SelectItem>
@@ -441,11 +441,11 @@ export default function CreateProductPage() {
                       <div className="space-y-2">
                         <Label htmlFor={`skus.${index}.currency`}>Currency</Label>
                         <Select
-                          value={field.currency}
+                          value={watch(`skus.${index}.currency`) || 'ETB'}
                           onValueChange={(value) => setValue(`skus.${index}.currency`, value)}
                         >
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Select currency" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="ETB">ETB</SelectItem>
@@ -459,7 +459,7 @@ export default function CreateProductPage() {
                       <input
                         type="checkbox"
                         id={`skus.${index}.active`}
-                        checked={field.active}
+                        checked={watch(`skus.${index}.active`) ?? true}
                         onChange={(e) => setValue(`skus.${index}.active`, e.target.checked)}
                         className="rounded"
                       />

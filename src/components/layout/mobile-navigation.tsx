@@ -71,8 +71,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { isAuthenticated, user, isMerchant, isAdmin, logout } = useAuth()
-  const { items: cartItems } = useCart()
-  const { unreadCount } = useNotifications()
+  const { totalItems: cartItemsCount } = useCart()
 
   const getNavItems = () => {
     if (isAdmin) return adminNavItems
@@ -88,7 +87,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
   const handleLogout = async () => {
     try {
       await logout()
-      router.push('/')
+      // Redirect is handled by useAuth hook, but we can close the menu
       setIsOpen(false)
     } catch (error) {
       console.error('Logout failed:', error)
@@ -96,7 +95,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
   }
 
   const navItems = getNavItems()
-  const cartItemsCount = cartItems?.length || 0
+  // cartItemsCount is now the count of unique products from useCart
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -149,7 +148,6 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
                 const Icon = item.icon
                 const isActive = pathname === item.href
                 const showBadge = item.name === 'Cart' && cartItemsCount > 0
-                const showNotificationBadge = item.name === 'Chat' && unreadCount > 0
 
                 return (
                   <Button
@@ -166,11 +164,6 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
                     {showBadge && (
                       <Badge variant="destructive" className="ml-2">
                         {cartItemsCount}
-                      </Badge>
-                    )}
-                    {showNotificationBadge && (
-                      <Badge variant="destructive" className="ml-2">
-                        {unreadCount}
                       </Badge>
                     )}
                   </Button>

@@ -1,232 +1,188 @@
-import { useCallback, useEffect } from 'react'
-import { useAppDispatch, useAppSelector } from './redux'
+import { useCallback, useEffect, useMemo } from 'react';
+import { useAppDispatch, useAppSelector } from './redux';
 import {
   fetchConversations,
-  getOrCreateConversation,
+  createConversation,
   fetchMessages,
   sendMessage,
-  markMessageAsRead,
-  reportMessage,
-  uploadAttachments,
+  markAsRead,
   setActiveConversation,
   addMessage,
-  clearError,
-  clearMessages,
-} from '@/store/slices/chatSlice'
-import { useSocket } from './useSocket'
-import { MessageType } from '@/types'
+} from '@/store/slices/chatSlice';
+import type { Message } from '@/store/slices/chatSlice';
+import { usePusher } from './usePusher';
+import { useAuth } from './useAuth';
 
 export const useChat = () => {
-  const dispatch = useAppDispatch()
-  const { socket, emit } = useSocket()
+  const dispatch = useAppDispatch();
+  const { 
+    pusher, 
+    isConnected, 
+    subscribeToConversation, 
+    unsubscribeFromConversation 
+  } = usePusher();
+  const { user } = useAuth();
+  
   const {
     conversations,
-    activeConversation,
+    activeConversationId,
     messages,
-    unreadCount,
-    isConnected,
     isLoading,
     error,
-  } = useAppSelector(state => state.chat)
-
-  const loadConversations = useCallback(() => {
-    return dispatch(fetchConversations())
-  }, [dispatch])
-
-  const createOrGetConversation = useCallback(
-    (merchantId: string) => {
-      return dispatch(getOrCreateConversation(merchantId))
-    },
-    [dispatch]
-  )
-
-  const loadMessages = useCallback(
-    (conversationId: string) => {
-      return dispatch(fetchMessages(conversationId))
-    },
-    [dispatch]
-  )
-
-  const sendChatMessage = useCallback(
-    (conversationId: string, content: string, type: MessageType = MessageType.TEXT, attachments: string[] = []) => {
-      return dispatch(sendMessage({
-        conversationId,
-        data: { conversationId, content, type, attachments }
-      }))
-    },
-    [dispatch]
-  )
-
-  const markAsRead = useCallback(
-    (conversationId: string, latestMessageId: string) => {
-      return dispatch(markMessageAsRead({ conversationId, latestMessageId }))
-    },
-    [dispatch]
-  )
-
-  const reportChatMessage = useCallback(
-    (messageId: string, reason: string) => {
-      return dispatch(reportMessage({ messageId, reason }))
-    },
-    [dispatch]
-  )
-
-  const uploadChatAttachments = useCallback(
-    (conversationId: string, files: File[]) => {
-      return dispatch(uploadAttachments({ conversationId, files }))
-    },
-    [dispatch]
-  )
-
-  const setActiveConv = useCallback(
-    (conversation: any) => {
-      dispatch(setActiveConversation(conversation))
-    },
-    [dispatch]
-  )
-
-  const clearErrorState = useCallback(() => {
-    dispatch(clearError())
-  }, [dispatch])
-
-  const clearChatMessages = useCallback(() => {
-    dispatch(clearMessages())
-  }, [dispatch])
-
-  // WebSocket event handlers
-  const handleNewMessage = useCallback(
-    (message: any) => {
-      dispatch(addMessage(message))
-    },
-    [dispatch]
-  )
-
-  const handleMessageRead = useCallback(
-    (data: { messageId: string; readAt: string }) => {
-      // Update message read status
-      const message = messages.find(m => m.id === data.messageId)
-      if (message) {
-        message.readAt = data.readAt
-      }
-    },
-    [messages]
-  )
-
-  const handleTyping = useCallback(
-    (data: { conversationId: string; userId: string; isTyping: boolean }) => {
-      // Handle typing indicator
-      console.log('User typing:', data)
-    },
-    []
-  )
-
-  // Set up WebSocket listeners
-  useEffect(() => {
-    if (socket && isConnected) {
-      socket.on('message', handleNewMessage)
-      socket.on('message:read', handleMessageRead)
-      socket.on('typing', handleTyping)
-
-      return () => {
-        socket.off('message', handleNewMessage)
-        socket.off('message:read', handleMessageRead)
-        socket.off('typing', handleTyping)
-      }
-    }
-  }, [socket, isConnected, handleNewMessage, handleMessageRead, handleTyping])
+  } = useAppSelector((state: any) => state.chat);
 
   // Load conversations on mount
   useEffect(() => {
-    loadConversations()
-  }, [loadConversations])
+    dispatch(fetchConversations());
+  }, [dispatch]);
 
-  // WebSocket emit functions
-  const emitMessage = useCallback(
-    (conversationId: string, content: string, type: MessageType = MessageType.TEXT, attachments: string[] = []) => {
-      emit('message:send', { conversationId, content, type, attachments })
+  // Subscribe to active conversation channel when it changes
+  useEffect(() => {
+    if (!isConnected || !activeConversationId) {
+      return;
+    }
+
+    subscribeToConversation(activeConversationId);
+    console.log('[useChat] Subscribed to conversation:', activeConversationId);
+
+    return () => {
+      unsubscribeFromConversation(activeConversationId);
+    };
+  }, [isConnected, activeConversationId, subscribeToConversation, unsubscribeFromConversation]);
+
+  // Listen for new conversation events via window events (triggered by usePusher)
+  useEffect(() => {
+    if (!isConnected || !user) return;
+
+    const handlePusherNewConversation = (event: CustomEvent) => {
+      console.log('[useChat] New conversation event received:', event.detail);
+      // Refresh conversations list to show the new conversation
+            dispatch(fetchConversations());
+    };
+
+    window.addEventListener('pusher:new-conversation', handlePusherNewConversation as EventListener);
+
+    return () => {
+      window.removeEventListener('pusher:new-conversation', handlePusherNewConversation as EventListener);
+    };
+  }, [isConnected, user, dispatch]);
+
+  const loadConversations = useCallback(() => {
+    return dispatch(fetchConversations());
+  }, [dispatch]);
+
+  const createOrGetConversation = useCallback(
+    (merchantId: string) => {
+      return dispatch(createConversation(merchantId));
     },
-    [emit]
-  )
+    [dispatch]
+  );
 
-  const emitTyping = useCallback(
-    (conversationId: string, isTyping: boolean) => {
-      emit('typing', { conversationId, isTyping })
-    },
-    [emit]
-  )
-
-  const emitJoinConversation = useCallback(
+  const loadMessages = useCallback(
     (conversationId: string) => {
-      emit('join:conversation', conversationId)
+      return dispatch(fetchMessages(conversationId));
     },
-    [emit]
-  )
+    [dispatch]
+  );
 
-  const emitLeaveConversation = useCallback(
+  const sendChatMessage = useCallback(
+    async (
+      conversationId: string,
+      content: string,
+      type: 'TEXT' | 'SIGNAL' = 'TEXT',
+      attachments: string[] = []
+    ) => {
+      // Always use REST API - Pusher will broadcast the message in real-time
+        return dispatch(
+          sendMessage({
+            conversationId,
+            content,
+            type,
+            attachments,
+          })
+        );
+    },
+    [dispatch]
+  );
+
+  const markAsReadMessage = useCallback(
+    (conversationId: string, messageId: string) => {
+      // Always use REST API - Pusher will broadcast read receipt in real-time
+        return dispatch(markAsRead({ conversationId, messageId }));
+    },
+    [dispatch]
+  );
+
+  const sendTypingIndicator = useCallback(
     (conversationId: string) => {
-      emit('leave:conversation', conversationId)
+      // Typing indicators can be added later via Pusher if needed
+      // For now, we'll skip this to keep it simple
     },
-    [emit]
-  )
+    []
+  );
 
-  const emitMarkRead = useCallback(
-    (messageId: string) => {
-      emit('message:read', { messageId })
+  const setActiveConv = useCallback(
+    (conversationId: string | null) => {
+      dispatch(setActiveConversation(conversationId));
+      if (conversationId) {
+        subscribeToConversation(conversationId);
+        loadMessages(conversationId);
+      }
     },
-    [emit]
-  )
+    [dispatch, subscribeToConversation, loadMessages]
+  );
 
-  // Helper functions
-  const getConversationById = useCallback(
+  const joinConversation = useCallback(
     (conversationId: string) => {
-      return conversations.find(c => c.id === conversationId)
+      if (isConnected) {
+        subscribeToConversation(conversationId);
+      }
     },
-    [conversations]
-  )
+    [isConnected, subscribeToConversation]
+  );
 
-  const getMessagesByConversation = useCallback(
+  const getMessagesForConversation = useCallback(
     (conversationId: string) => {
-      return messages.filter(m => m.conversationId === conversationId)
+      return messages[conversationId] || [];
     },
     [messages]
-  )
+  );
 
-  const getUnreadCountByConversation = useCallback(
-    (conversationId: string) => {
-      return messages.filter(m => 
-        m.conversationId === conversationId && 
-        !m.readAt && 
-        m.senderRole === 'MERCHANT'
-      ).length
-    },
-    [messages]
-  )
+  // Calculate unread count
+  const unreadCount = useMemo(() => {
+    let count = 0;
+    for (const convId in messages) {
+      const convMessages = messages[convId];
+      const conversation = conversations.find((c: any) => c.id === convId);
+      if (conversation) {
+        const userRole = (user as any)?.role;
+        const targetRole = userRole === 'MERCHANT' ? 'BUYER' : 'MERCHANT';
+        count += convMessages.filter((m: any) => 
+          m.senderRole === targetRole && !m.readAt
+        ).length;
+      }
+    }
+    return count;
+  }, [messages, conversations, user]);
 
   return {
     conversations,
-    activeConversation,
+    activeConversationId,
     messages,
-    unreadCount,
-    isConnected,
     isLoading,
     error,
+    isConnected,
+    pusher,
+    unreadCount,
     loadConversations,
     createOrGetConversation,
     loadMessages,
     sendMessage: sendChatMessage,
-    markAsRead,
-    reportMessage: reportChatMessage,
-    uploadAttachments: uploadChatAttachments,
+    markAsRead: markAsReadMessage,
     setActiveConversation: setActiveConv,
-    clearError: clearErrorState,
-    clearMessages: clearChatMessages,
-    emitMessage,
-    emitTyping,
-    emitJoinConversation,
-    emitLeaveConversation,
-    emitMarkRead,
-    getConversationById,
-    getMessagesByConversation,
-    getUnreadCountByConversation,
-  }
-}
+    joinConversation,
+    sendTypingIndicator,
+    getMessagesForConversation,
+  };
+};
+

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,26 +29,113 @@ import {
   Settings as SettingsIcon
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useMerchants } from '@/hooks/useMerchants'
 import { cn } from '@/lib/utils'
 
 export default function MerchantSettingsPage() {
   const { isAuthenticated, isMerchant, user } = useAuth()
+  const { currentMerchant, loadMerchantById, updateMerchant } = useMerchants()
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Store Information
-  const [storeName, setStoreName] = useState('My Ethiopian Store')
-  const [storeDescription, setStoreDescription] = useState('Premium Ethiopian products and handicrafts')
-  const [storeEmail, setStoreEmail] = useState('store@example.com')
-  const [storePhone, setStorePhone] = useState('+251911234567')
-  const [storeAddress, setStoreAddress] = useState('Bole, Addis Ababa')
+  // Store Information - loaded from merchant data
+  const [storeName, setStoreName] = useState('')
+  const [storeDescription, setStoreDescription] = useState('')
+  const [storeEmail, setStoreEmail] = useState('')
+  const [storePhone, setStorePhone] = useState('')
+  const [storeAddress, setStoreAddress] = useState('')
   const [storeLogo, setStoreLogo] = useState<string | null>(null)
 
+  // Load merchant data on mount or if not already loaded
+  useEffect(() => {
+    const loadMerchantData = async () => {
+      if (!isAuthenticated || !isMerchant) {
+        setIsLoading(false)
+        return
+      }
+
+      // Only load if we don't have current merchant data
+      if (!currentMerchant) {
+        try {
+          console.log('Loading merchant data for settings page...')
+          await loadMerchantById('current')
+        } catch (error) {
+          console.error('Failed to load merchant data:', error)
+        }
+      } else {
+        console.log('Merchant data already loaded:', currentMerchant)
+      }
+      
+      setIsLoading(false)
+    }
+
+    loadMerchantData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isMerchant])
+
   // Business Information
-  const [businessName, setBusinessName] = useState('Ethiopian Store LLC')
-  const [taxId, setTaxId] = useState('TIN-123456789')
+  const [businessName, setBusinessName] = useState('')
+  const [taxId, setTaxId] = useState('')
   const [businessType, setBusinessType] = useState('llc')
-  const [registrationNumber, setRegistrationNumber] = useState('REG-987654')
+  const [registrationNumber, setRegistrationNumber] = useState('')
+
+  // Update form fields when merchant data loads
+  useEffect(() => {
+    console.log('Settings useEffect triggered - currentMerchant:', currentMerchant)
+    console.log('Settings useEffect triggered - user:', user)
+    
+    if (currentMerchant) {
+      console.log('Prefilling form fields with merchant data:', currentMerchant)
+      console.log('Merchant displayName:', currentMerchant.displayName)
+      console.log('Merchant description:', currentMerchant.description)
+      console.log('Merchant legalName:', currentMerchant.legalName)
+      console.log('Merchant owner:', (currentMerchant as any)?.owner)
+      console.log('Merchant payout:', (currentMerchant as any)?.payout)
+      
+      // Store Information
+      setStoreName(currentMerchant.displayName || '')
+      setStoreDescription(currentMerchant.description || '')
+      
+      // Get email and phone from owner if available, otherwise from current merchant object or user
+      const ownerEmail = (currentMerchant as any)?.owner?.email || user?.email || ''
+      const ownerPhone = (currentMerchant as any)?.owner?.phone || user?.phone || ''
+      setStoreEmail(ownerEmail)
+      setStorePhone(ownerPhone)
+      
+      setStoreLogo(currentMerchant.logoUrl || null)
+      
+      // Address - try to format it better if we have lat/lon
+      if (currentMerchant.lat && currentMerchant.lon) {
+        // You could use a geocoding service to get address from lat/lon
+        // For now, just show coordinates or try to get a formatted address
+        setStoreAddress(`${currentMerchant.lat}, ${currentMerchant.lon}`)
+      } else {
+        setStoreAddress('')
+      }
+      
+      // Business Information - prefilled from merchant data
+      setBusinessName(currentMerchant.legalName || '')
+      
+      // Payment Settings - prefilled from MerchantPayout if available
+      const payout = (currentMerchant as any)?.payout
+      if (payout) {
+        setPaymentMethod(payout.method || 'telebirr')
+        setAccountNumber(payout.accountRef || '')
+        // Account name could be derived from merchant name or owner name
+        setAccountName(currentMerchant.displayName || ownerEmail || '')
+      } else {
+        // Set defaults if no payout exists yet
+        setPaymentMethod('telebirr')
+        setAccountNumber('')
+        setAccountName('')
+      }
+      
+      // Note: taxId, businessType, and registrationNumber might be in MerchantKyc or elsewhere
+      // For now, we'll leave them empty if not in the merchant object
+      // These could be extended to fetch from related tables if needed
+    }
+  }, [currentMerchant, user])
 
   // Notification Settings
   const [emailNotifications, setEmailNotifications] = useState(true)
@@ -68,12 +155,52 @@ export default function MerchantSettingsPage() {
   const [deliveryTime, setDeliveryTime] = useState('2-5')
 
   const handleSave = async (section: string) => {
+    if (!currentMerchant?.id) {
+      console.error('Merchant ID not available')
+      return
+    }
+
     setIsSaving(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setSaveSuccess(true)
-    setTimeout(() => setSaveSuccess(false), 3000)
+    try {
+      const updateData: any = {}
+      
+      if (section === 'store' || section === 'all') {
+        updateData.displayName = storeName
+        updateData.description = storeDescription
+        if (storeLogo) {
+          updateData.logoUrl = storeLogo
+        }
+      }
+
+      if (section === 'business' || section === 'all') {
+        updateData.legalName = businessName
+        // Note: taxId, businessType, registrationNumber would need to be stored elsewhere
+        // (e.g., in MerchantKyc or a separate settings table)
+      }
+
+      if (section === 'payment' || section === 'all') {
+        // Update payout information
+        // This would need a separate API endpoint to update MerchantPayout
+        // For now, we'll just update merchant data
+        updateData.payout = {
+          method: paymentMethod,
+          accountRef: accountNumber
+        }
+      }
+
+      // Update merchant via API
+      await updateMerchant(currentMerchant.id, updateData)
+      
+      // Reload merchant data
+      await loadMerchantById('current')
+      
+      setIsSaving(false)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (error) {
+      console.error('Failed to save merchant settings:', error)
+      setIsSaving(false)
+    }
   }
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,6 +223,22 @@ export default function MerchantSettingsPage() {
             <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
             <p className="text-muted-foreground">
               You need to be a merchant to access settings
+            </p>
+          </div>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="container py-8">
+          <div className="text-center">
+            <SettingsIcon className="h-16 w-16 mx-auto text-muted-foreground mb-4 animate-pulse" />
+            <h1 className="text-2xl font-bold mb-2">Loading Settings...</h1>
+            <p className="text-muted-foreground">
+              Please wait while we load your merchant information
             </p>
           </div>
         </div>

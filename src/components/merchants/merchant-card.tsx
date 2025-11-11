@@ -19,6 +19,7 @@ import {
 import { Merchant } from '@/types'
 import { calculateDistance } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { QuickChatDialog } from '@/components/chat/quick-chat-dialog'
 
 interface MerchantCardProps {
   merchant: Merchant
@@ -36,6 +37,7 @@ export function MerchantCard({
   className
 }: MerchantCardProps) {
   const [imageError, setImageError] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
 
   const getDistance = () => {
     if (!userLocation || !merchant.lat || !merchant.lon) return null
@@ -150,17 +152,23 @@ export function MerchantCard({
             </Button>
           </Link>
           
-          {onContact && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onContact(merchant.id)}
+            onClick={() => setChatOpen(true)}
+            title="Send message"
             >
               <MessageCircle className="h-4 w-4" />
             </Button>
-          )}
         </div>
       </CardFooter>
+
+      <QuickChatDialog
+        merchantId={merchant.id}
+        merchantName={merchant.displayName}
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+      />
     </Card>
   )
 }

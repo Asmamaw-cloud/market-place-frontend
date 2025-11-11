@@ -20,10 +20,17 @@ export interface GetOrdersResponse {
 }
 
 export const ordersService = {
-  // Get orders
+  // Get orders - automatically filters by merchant if user is a merchant
   async getOrders(params: GetOrdersParams = {}): Promise<GetOrdersResponse> {
+    // The backend /orders endpoint automatically filters by merchant if user role is MERCHANT
     const response = await api.get('/orders', { params })
-    return response.data
+    return response.data.data || response.data
+  },
+
+  // Get merchant orders (alternative endpoint)
+  async getMerchantOrders(params: GetOrdersParams = {}): Promise<GetOrdersResponse> {
+    const response = await api.get('/orders/me', { params })
+    return response.data.data || response.data
   },
 
   // Get single order

@@ -63,10 +63,18 @@ api.interceptors.response.use(
           return api(originalRequest)
         }
       } catch (refreshError) {
-        // Refresh failed, redirect to login
+        // Refresh failed, only redirect to login if on a protected route
         dispatch?.({ type: 'auth/logout' })
         if (typeof window !== 'undefined') {
-          window.location.href = '/login'
+          const currentPath = window.location.pathname
+          // Public routes that don't require authentication
+          const publicRoutes = ['/', '/login', '/signup', '/register', '/products', '/merchants']
+          const isPublicRoute = publicRoutes.some(route => currentPath === route || currentPath.startsWith(route + '/'))
+          
+          // Only redirect to login if not already on a public route
+          if (!isPublicRoute) {
+            window.location.href = '/login'
+          }
         }
       }
     }

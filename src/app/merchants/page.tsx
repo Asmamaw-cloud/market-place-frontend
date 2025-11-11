@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/main-layout'
 import { MerchantCard } from '@/components/merchants/merchant-card'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Search, Filter, MapPin, Star, Store, Grid, List } from 'lucide-react'
 import { useMerchants } from '@/hooks/useMerchants'
+import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
 export default function MerchantsPage() {
@@ -83,9 +85,16 @@ export default function MerchantsPage() {
     }
   })
 
-  const handleContactMerchant = (merchant: any) => {
-    // TODO: Implement contact functionality
-    console.log('Contact merchant:', merchant.id)
+  const router = useRouter()
+  const { isAuthenticated } = useAuth()
+
+  const handleContactMerchant = (merchantId: string) => {
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=/chat?merchantId=${merchantId}`)
+      return
+    }
+    // Navigate to chat page with merchantId query parameter
+    router.push(`/chat?merchantId=${merchantId}`)
   }
 
   if (error) {
@@ -269,7 +278,7 @@ export default function MerchantsPage() {
                 key={merchant.id}
                 merchant={merchant}
                 userLocation={userLocation || undefined}
-                onContact={handleContactMerchant}
+                onContact={() => handleContactMerchant(merchant.id)}
                 showDistance={!!userLocation}
                 className={viewMode === 'list' ? 'flex-row' : ''}
               />

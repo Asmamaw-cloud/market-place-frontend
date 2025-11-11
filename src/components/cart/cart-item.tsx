@@ -61,14 +61,25 @@ export function CartItem({
   }
 
   const handleIncrement = () => {
-    const newQuantity = item.quantity + item.sku.unitIncrement
+    const increment = item.sku?.unitIncrement || 1
+    const newQuantity = item.quantity + increment
     handleQuantityChange(newQuantity)
   }
 
   const handleDecrement = () => {
-    const newQuantity = Math.max(0, item.quantity - item.sku.unitIncrement)
+    const increment = item.sku?.unitIncrement || 1
+    const newQuantity = Math.max(0, item.quantity - increment)
     handleQuantityChange(newQuantity)
   }
+
+  const product = item.sku?.product
+  const images = Array.isArray(product?.images) ? product!.images : []
+  const productName = product?.name || item.sku?.name || 'Product'
+  const skuName = item.sku?.name || 'SKU'
+  const unitType = item.sku?.unitType || 'unit'
+  const unitIncrement = item.sku?.unitIncrement || 1
+  const pricePerCanonicalUnit = item.sku?.pricePerCanonicalUnit
+  const merchantDisplayName = product?.merchant?.displayName
 
   const subtotal = item.unitPrice * item.quantity
 
@@ -78,10 +89,10 @@ export function CartItem({
         <div className="flex items-start space-x-4">
           {/* Product Image */}
           <div className="relative w-20 h-20 flex-shrink-0">
-            {item.sku.product.images && item.sku.product.images.length > 0 ? (
+            {images.length > 0 ? (
               <Image
-                src={item.sku.product.images[0]}
-                alt={item.sku.product.name}
+                src={images[0]}
+                alt={productName}
                 fill
                 className="object-cover rounded-lg"
               />
@@ -97,19 +108,19 @@ export function CartItem({
             <div className="space-y-2">
               {/* Product Name */}
               <h3 className="font-medium line-clamp-2">
-                {item.sku.product.name}
+                {productName}
               </h3>
 
               {/* SKU Info */}
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
-                  {item.sku.name} - {item.sku.unitType}
+                  {skuName} - {unitType}
                 </p>
                 
                 {/* Merchant Info */}
-                {showMerchant && item.sku.product.merchant && (
+                {showMerchant && merchantDisplayName && (
                   <p className="text-xs text-muted-foreground">
-                    Sold by {item.sku.product.merchant.displayName}
+                    Sold by {merchantDisplayName}
                   </p>
                 )}
               </div>
@@ -117,9 +128,9 @@ export function CartItem({
               {/* Price */}
               <div className="flex items-center space-x-2">
                 <span className="font-bold">
-                  {formatCurrency(item.unitPrice)} per {formatUnit(1, item.sku.unitType)}
+                  {formatCurrency(item.unitPrice)} per {formatUnit(1, unitType)}
                 </span>
-                {item.unitPrice !== item.sku.pricePerCanonicalUnit && (
+                {pricePerCanonicalUnit !== undefined && item.unitPrice !== pricePerCanonicalUnit && (
                   <Badge variant="secondary" className="text-xs">
                     Price Updated
                   </Badge>
@@ -136,7 +147,7 @@ export function CartItem({
                 variant="outline"
                 size="sm"
                 onClick={handleDecrement}
-                disabled={disabled || isUpdating || item.quantity <= item.sku.unitIncrement}
+                disabled={disabled || isUpdating || item.quantity <= unitIncrement}
                 className="h-8 w-8 p-0"
               >
                 <Minus className="h-3 w-3" />
@@ -147,7 +158,7 @@ export function CartItem({
                   <Skeleton className="h-4 w-8" />
                 ) : (
                   <span className="text-sm font-medium">
-                    {formatUnit(item.quantity, item.sku.unitType)}
+                    {formatUnit(item.quantity, unitType)}
                   </span>
                 )}
               </div>

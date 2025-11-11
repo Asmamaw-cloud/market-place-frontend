@@ -62,9 +62,17 @@ export const fetchMerchant = createAsyncThunk(
   'merchants/fetchMerchant',
   async (id: string, { rejectWithValue }) => {
     try {
-      const response = await merchantsApi.get(id)
-      return response.data
+      // If id is 'current', use the /me endpoint for authenticated merchant
+      let merchantData
+      if (id === 'current') {
+        merchantData = await merchantsService.getCurrentMerchant()
+      } else {
+        merchantData = await merchantsService.getMerchant(id)
+      }
+      console.log('Fetched merchant data:', merchantData)
+      return merchantData
     } catch (error: any) {
+      console.error('Error fetching merchant:', error)
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch merchant')
     }
   }
@@ -201,7 +209,12 @@ const merchantsSlice = createSlice({
       })
       .addCase(fetchMerchant.fulfilled, (state, action) => {
         state.isLoading = false
-        state.currentMerchant = action.payload.data
+        // action.payload is already the Merchant object from the service
+        const merchantData = action.payload as Merchant
+        console.log('fetchMerchant.fulfilled - payload:', action.payload)
+        console.log('Setting currentMerchant to:', merchantData)
+        state.currentMerchant = merchantData
+        console.log('currentMerchant after setting:', state.currentMerchant)
       })
       .addCase(fetchMerchant.rejected, (state, action) => {
         state.isLoading = false

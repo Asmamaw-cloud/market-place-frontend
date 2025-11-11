@@ -25,6 +25,7 @@ import { PriceDisplay } from '@/components/ui/price-display'
 import { UnitDisplay } from '@/components/ui/unit-display'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { categoriesApi } from '@/lib/api'
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -33,6 +34,7 @@ export default function ProductDetailPage() {
 
   const [activeTab, setActiveTab] = useState('overview')
   const [isDeleting, setIsDeleting] = useState(false)
+  const [categoryName, setCategoryName] = useState<string | null>(null)
 
   const { isAuthenticated, isMerchant } = useAuth()
   const { products, isLoading, error, fetchProducts, deleteProduct } = useProducts()
@@ -44,6 +46,32 @@ export default function ProductDetailPage() {
       fetchProducts({ merchant: 'current' })
     }
   }, [isAuthenticated, isMerchant, products, fetchProducts])
+
+  // Fetch category name if categoryId exists but category data is not loaded
+  useEffect(() => {
+    const fetchCategoryName = async () => {
+      // First check if category is already included in product data
+      if (product?.category?.name) {
+        setCategoryName(product.category.name)
+        return
+      }
+
+      // If categoryId exists but category data is missing, fetch from categories list
+      if (product?.categoryId && !categoryName) {
+        try {
+          const response = await categoriesApi.list()
+          const categories = response.data.data || []
+          const category = categories.find((cat: any) => cat.id === product.categoryId)
+          setCategoryName(category?.name || null)
+        } catch (error) {
+          console.error('Failed to fetch categories:', error)
+          setCategoryName(null)
+        }
+      }
+    }
+
+    fetchCategoryName()
+  }, [product, categoryName])
 
   const handleDeleteProduct = async () => {
     if (!product) return
@@ -217,7 +245,7 @@ export default function ProductDetailPage() {
 
                   <div>
                     <h4 className="font-medium text-sm text-muted-foreground">Category</h4>
-                    <Badge variant="outline">{product.categoryId || 'Uncategorized'}</Badge>
+                    <Badge variant="outline">{categoryName || product.category?.name || 'Uncategorized'}</Badge>
                   </div>
 
                   <div>

@@ -29,18 +29,7 @@ import { productSchema } from '@/lib/validators'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { UploadButton } from '@/components/uploadthing'
-
-const categories = [
-  'electronics',
-  'clothing',
-  'food',
-  'books',
-  'home',
-  'beauty',
-  'sports',
-  'automotive',
-  'other'
-]
+import { categoriesApi } from '@/lib/api'
 
 export default function EditProductPage() {
   const params = useParams()
@@ -49,6 +38,9 @@ export default function EditProductPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [imageUrls, setImageUrls] = useState<string[]>([])
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([])
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false)
+  const [skuIdMap, setSkuIdMap] = useState<Map<number, string>>(new Map()) // Maps field index to SKU ID
 
   const { isAuthenticated, isMerchant } = useAuth()
   const { products, isLoading, error, fetchProducts, updateProduct } = useProducts()
@@ -98,18 +90,50 @@ export default function EditProductPage() {
     }
   }, [isAuthenticated, isMerchant, products, fetchProducts])
 
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setIsLoadingCategories(true)
+      try {
+        const response = await categoriesApi.list()
+        setCategories(response.data.data || [])
+      } catch (error) {
+        console.error('Failed to fetch categories:', error)
+      } finally {
+        setIsLoadingCategories(false)
+      }
+    }
+
+    if (isAuthenticated && isMerchant) {
+      fetchCategories()
+    }
+  }, [isAuthenticated, isMerchant])
+
   useEffect(() => {
     if (product) {
-      reset({
-        name: product.name || '',
-        slug: product.slug || '',
-        description: product.description || '',
-        categoryId: product.categoryId || '',
-        images: product.images || [],
-        skus: product.skus?.length ? product.skus : [
+      // Map SKUs properly, ensuring all fields are included
+      const mappedSkus: Array<{
+        name: string;
+        unitType: 'PIECE' | 'KG' | 'LITER' | 'METER';
+        unitIncrement: number;
+        packageSize: number;
+        pricePerCanonicalUnit: number;
+        currency: string;
+        active: boolean;
+      }> = product.skus?.length 
+        ? product.skus.map(sku => ({
+            name: sku.name || '',
+            unitType: (sku.unitType as 'PIECE' | 'KG' | 'LITER' | 'METER') || 'PIECE',
+            unitIncrement: sku.unitIncrement || 1,
+            packageSize: sku.packageSize ?? 1,
+            pricePerCanonicalUnit: sku.pricePerCanonicalUnit || 0,
+            currency: sku.currency || 'ETB',
+            active: sku.active ?? true
+          }))
+        : [
           {
             name: '',
-            unitType: 'PIECE',
+            unitType: 'PIECE' as const,
             unitIncrement: 1,
             packageSize: 1,
             pricePerCanonicalUnit: 0,
@@ -117,6 +141,23 @@ export default function EditProductPage() {
             active: true
           }
         ]
+
+      // Store SKU ID mapping for later use in submission
+      const idMap = new Map<number, string>()
+      if (product.skus?.length) {
+        product.skus.forEach((sku, index) => {
+          idMap.set(index, sku.id)
+        })
+      }
+      setSkuIdMap(idMap)
+
+      reset({
+        name: product.name || '',
+        slug: product.slug || '',
+        description: product.description || '',
+        categoryId: product.categoryId || '',
+        images: product.images || [],
+        skus: mappedSkus
       })
       setImageUrls(product.images || [])
     }
@@ -140,6 +181,7 @@ export default function EditProductPage() {
       currency: 'ETB',
       active: true
     })
+    // New SKUs don't have IDs (will be created on backend)
   }
 
   const removeSku = (index: number) => {
@@ -174,10 +216,43 @@ export default function EditProductPage() {
         data.slug = generateSlug(data.name)
       }
 
+      // Add SKU IDs to the submission data for update tracking
+      if (data.skus && Array.isArray(data.skus)) {
+        data.skus = data.skus.map((sku: any, index: number) => {
+          const skuId = skuIdMap.get(index)
+          return {
+            ...sku,
+            ...(skuId ? { id: skuId } : {}) // Include ID if it exists (existing SKU)
+          }
+        })
+      }
+
+      console.log('Submitting product update with data:', {
+        productId: product.id,
+        data: {
+          ...data,
+          skus: data.skus?.map((sku: any, index: number) => ({
+            index,
+            id: sku.id,
+            name: sku.name,
+            unitType: sku.unitType,
+            pricePerCanonicalUnit: sku.pricePerCanonicalUnit,
+            currency: sku.currency
+          }))
+        }
+      })
+      
       await updateProduct(product.id, data)
       router.push(`/merchant/products/${product.id}`)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update product:', error)
+      console.error('Error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status
+      })
+      // You might want to show a user-friendly error message here
+      alert(`Failed to update product: ${error?.response?.data?.message || error?.message || 'Unknown error'}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -306,20 +381,27 @@ export default function EditProductPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="categoryId">Category</Label>
-                <Select {...register('categoryId')}>
+                <Select 
+                  value={watch('categoryId') || ''} 
+                  onValueChange={(value) => setValue('categoryId', value)}
+                  disabled={isLoadingCategories}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
+                    <SelectValue placeholder={isLoadingCategories ? "Loading categories..." : "Select category"} />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {errors.categoryId && (
                   <p className="text-sm text-destructive">{errors.categoryId.message}</p>
+                )}
+                {isLoadingCategories && (
+                  <p className="text-xs text-muted-foreground">Loading categories...</p>
                 )}
               </div>
             </CardContent>
@@ -416,18 +498,23 @@ export default function EditProductPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor={`skus.${index}.unitType`}>Unit Type</Label>
-                      <Select {...register(`skus.${index}.unitType`)}>
+                      <Select
+                        value={watch(`skus.${index}.unitType`) || 'PIECE'}
+                        onValueChange={(value: 'PIECE' | 'KG' | 'LITER' | 'METER') => setValue(`skus.${index}.unitType`, value)}
+                      >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select unit type" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="PIECE">Piece</SelectItem>
-                          <SelectItem value="KG">Kilogram</SelectItem>
-                          <SelectItem value="LITER">Liter</SelectItem>
-                          <SelectItem value="METER">Meter</SelectItem>
-                          <SelectItem value="BOX">Box</SelectItem>
+                          <SelectItem value="KG">Kilogram (KG)</SelectItem>
+                          <SelectItem value="LITER">Liter (L)</SelectItem>
+                          <SelectItem value="METER">Meter (M)</SelectItem>
                         </SelectContent>
                       </Select>
+                      {errors.skus?.[index]?.unitType && (
+                        <p className="text-sm text-destructive">{errors.skus[index]?.unitType?.message}</p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -461,9 +548,12 @@ export default function EditProductPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor={`skus.${index}.currency`}>Currency</Label>
-                      <Select {...register(`skus.${index}.currency`)}>
+                      <Select
+                        value={watch(`skus.${index}.currency`) || 'ETB'}
+                        onValueChange={(value) => setValue(`skus.${index}.currency`, value)}
+                      >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select currency" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="ETB">ETB</SelectItem>

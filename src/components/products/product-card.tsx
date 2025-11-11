@@ -12,6 +12,7 @@ import { Product, Sku, UnitType } from '@/types'
 import { formatCurrency, formatUnit, getRatingStars, getStatusColor } from '@/lib/utils'
 import { useCart } from '@/hooks/useCart'
 import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
 
 interface ProductCardProps {
   product: Product
@@ -32,9 +33,14 @@ export function ProductCard({
   
   const { addItem } = useCart()
   const { isAuthenticated } = useAuth()
+  const router = useRouter()
 
   const handleAddToCart = async () => {
-    if (!selectedSku || !isAuthenticated) return
+    if (!selectedSku) return
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
     
     setIsLoading(true)
     try {
@@ -206,7 +212,7 @@ export function ProductCard({
       <CardFooter className="p-4 pt-0">
         <Button
           onClick={handleAddToCart}
-          disabled={!selectedSku || !isAuthenticated || isLoading}
+          disabled={!selectedSku || isLoading}
           className="w-full"
         >
           {isLoading ? (

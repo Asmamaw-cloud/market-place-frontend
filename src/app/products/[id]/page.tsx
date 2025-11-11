@@ -26,6 +26,7 @@ import {
 import { useProducts } from '@/hooks/useProducts'
 import { useCart } from '@/hooks/useCart'
 import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
 import { Sku, UnitType } from '@/types'
 import { formatCurrency, formatUnit, getRatingStars, getStatusColor } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -42,6 +43,7 @@ export default function ProductDetailPage() {
   const { currentProduct, isLoading, error, loadProduct } = useProducts()
   const { addItem } = useCart()
   const { isAuthenticated } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     if (productId) {
@@ -56,7 +58,11 @@ export default function ProductDetailPage() {
   }, [currentProduct])
 
   const handleAddToCart = async () => {
-    if (!selectedSku || !isAuthenticated) return
+    if (!selectedSku) return
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
 
     setIsAddingToCart(true)
     try {
@@ -226,7 +232,7 @@ export default function ProductDetailPage() {
             <div className="flex items-center space-x-4">
               <Button
                 onClick={handleAddToCart}
-                disabled={!selectedSku || !isAuthenticated || isAddingToCart}
+                disabled={!selectedSku || isAddingToCart}
                 size="lg"
                 className="flex-1"
               >

@@ -23,15 +23,12 @@ import Link from 'next/link'
 
 export default function CartPage() {
   const router = useRouter()
-  const { items, totalItems, totalAmount, isLoading, loadCart, clearCart } = useCart()
+  const { items, totalItems, totalAmount, isLoading, clearCart } = useCart()
   const { isAuthenticated } = useAuth()
   const [isClearing, setIsClearing] = useState(false)
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadCart()
-    }
-  }, [isAuthenticated, loadCart])
+  // Note: Cart is already loaded by useCart hook on mount
+  // No need to call loadCart here to avoid infinite loops
 
   const handleClearCart = async () => {
     setIsClearing(true)
@@ -50,24 +47,51 @@ export default function CartPage() {
     router.push('/checkout')
   }
 
-  // Group items by merchant
-  const groupedItems = items.reduce((groups, item) => {
-    const merchantId = item.sku.product.merchantId
-    const merchantName = item.sku.product.merchant?.displayName || 'Unknown Merchant'
-    
-    if (!groups[merchantId]) {
-      groups[merchantId] = {
-        merchantName,
-        items: [],
-        subtotal: 0
-      }
+  // Debug: Log items to see what we have
+  useEffect(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('Cart Page - Items:', {
+        itemsLength: items.length,
+        items,
+        totalItems,
+        totalAmount
+      })
     }
-    
-    groups[merchantId].items.push(item)
-    groups[merchantId].subtotal += item.unitPrice * item.quantity
-    
-    return groups
-  }, {} as Record<string, { merchantName: string; items: any[]; subtotal: number }>)
+  }, [items, totalItems, totalAmount])
+
+  // Consolidate duplicate items by skuId (sum quantities)
+  // Only require basic item structure, not product (we'll handle missing product in UI)
+  const consolidatedItems = Object.values(
+    items.reduce((acc, item) => {
+      // Only filter out completely invalid items (no id or skuId)
+      if (!item || !item.id || !item.skuId) {
+        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+          console.warn('Filtered out invalid item in consolidation:', item)
+        }
+        return acc
+      }
+      const key = item.skuId
+      if (!acc[key]) {
+        acc[key] = { ...item }
+      } else {
+        acc[key] = { ...acc[key], quantity: acc[key].quantity + item.quantity }
+      }
+      return acc
+    }, {} as Record<string, typeof items[number]>)
+  )
+  
+  // Debug: Log consolidated items
+  useEffect(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('Cart Page - Consolidated Items:', {
+        consolidatedItemsLength: consolidatedItems.length,
+        consolidatedItems
+      })
+    }
+  }, [consolidatedItems])
+
+  // compute subtotal just once from consolidated items for clarity in the summary
+  const consolidatedSubtotal = consolidatedItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
 
   if (!isAuthenticated) {
     return (
@@ -171,40 +195,33 @@ export default function CartPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cart Items */}
+          {/* Cart Items Section */}
           <div className="lg:col-span-2 space-y-6">
-            {Object.entries(groupedItems).map(([merchantId, group]) => (
-              <Card key={merchantId}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center space-x-2">
-                      <Package className="h-5 w-5" />
-                      <span>{group.merchantName}</span>
-                    </CardTitle>
-                    <Badge variant="secondary">
-                      {group.items.length} {group.items.length === 1 ? 'item' : 'items'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {group.items.map((item) => (
-                    <CartItem
-                      key={item.id}
-                      item={item}
-                      showMerchant={false}
-                    />
-                  ))}
-                  
-                  {/* Merchant Subtotal */}
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <span className="font-medium">Subtotal for {group.merchantName}</span>
-                    <span className="font-bold text-lg">
-                      {formatCurrency(group.subtotal)}
-                    </span>
-                  </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Your Products</h2>
+              <span className="text-sm text-muted-foreground">
+                {consolidatedItems.length} {consolidatedItems.length === 1 ? 'item' : 'items'}
+              </span>
+            </div>
+            
+            {consolidatedItems.length > 0 ? (
+              <div className="space-y-4">
+                {consolidatedItems.map((item) => (
+                  <CartItem
+                    key={item.id}
+                    item={item}
+                    showMerchant={true}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No items in your cart</p>
                 </CardContent>
               </Card>
-            ))}
+            )}
           </div>
 
           {/* Order Summary */}

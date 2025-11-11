@@ -32,13 +32,20 @@ export const merchantsService = {
   // Get single merchant
   async getMerchant(id: string): Promise<Merchant> {
     const response = await api.get(`/merchants/${id}`)
-    return response.data
+    // Handle different response structures from TransformInterceptor
+    return response.data.data || response.data
   },
 
   // Get current merchant (for authenticated merchant)
   async getCurrentMerchant(): Promise<Merchant> {
     const response = await api.get('/merchants/me')
-    return response.data
+    console.log('Raw API response:', response)
+    console.log('Response.data:', response.data)
+    // TransformInterceptor wraps in { data }, axios unwraps one level
+    // So: response.data = { data: merchantObject }
+    const merchantData = response.data.data || response.data
+    console.log('Extracted merchant data:', merchantData)
+    return merchantData
   },
 
   // Create merchant

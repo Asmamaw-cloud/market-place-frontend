@@ -112,8 +112,8 @@ export function Navigation() {
     return customerAccountItems
   }
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     setIsOpen(false)
   }
 
@@ -232,13 +232,8 @@ export function Navigation() {
           {/* Chat (for all authenticated users) */}
           {isAuthenticated && (isCustomerRoute || (isMerchantRoute && isMerchant) || (isAdminRoute && isAdmin)) && (
             <Link href={isMerchantRoute ? "/merchant/chat" : "/chat"}>
-              <Button variant="ghost" size="icon" className="relative">
+              <Button variant="ghost" size="icon">
                 <MessageCircle className="h-4 w-4" />
-                {unreadCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                    {unreadCount}
-                  </Badge>
-                )}
               </Button>
             </Link>
           )}

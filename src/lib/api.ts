@@ -62,10 +62,18 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, redirect to login
+        // Refresh failed, only redirect to login if on a protected route
         if (typeof window !== 'undefined') {
           localStorage.removeItem('access_token');
-          window.location.href = '/login';
+          const currentPath = window.location.pathname;
+          // Public routes that don't require authentication
+          const publicRoutes = ['/', '/login', '/signup', '/register', '/products', '/merchants'];
+          const isPublicRoute = publicRoutes.some(route => currentPath === route || currentPath.startsWith(route + '/'));
+          
+          // Only redirect to login if not already on a public route
+          if (!isPublicRoute) {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(refreshError);
       }
@@ -142,6 +150,9 @@ export const cartApi = {
   
   updateItem: (itemId: string, data: { quantity: number }) =>
     apiClient.patch(`/cart/items/${itemId}`, data),
+  
+  clear: () =>
+    apiClient.delete('/cart'),
 };
 
 // Orders API
@@ -213,44 +224,6 @@ export const qnaApi = {
     apiClient.post(`/qna/${qnaId}/answer`, { answer }),
 };
 
-// Chat API
-export const chatApi = {
-  getConversations: () =>
-    apiClient.get('/chat/conversations'),
-  
-  getOrCreateConversation: (merchantId: string) =>
-    apiClient.post(`/chat/conversations/${merchantId}`),
-  
-  getMessages: (conversationId: string) =>
-    apiClient.get(`/chat/conversations/${conversationId}/messages`),
-  
-  sendMessage: (conversationId: string, data: { content: string; type?: string; attachments?: string[] }) =>
-    apiClient.post(`/chat/conversations/${conversationId}/messages`, data),
-  
-  markRead: (conversationId: string, latestMessageId: string) =>
-    apiClient.post(`/chat/conversations/${conversationId}/read/${latestMessageId}`),
-  
-  reportMessage: (messageId: string, reason: string) =>
-    apiClient.post(`/chat/messages/${messageId}/report`, { reason }),
-  
-  uploadAttachments: (conversationId: string, files: File[]) => {
-    const formData = new FormData();
-    files.forEach(file => formData.append('files', file));
-    return apiClient.post(`/chat/conversations/${conversationId}/attachments`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-  },
-  
-  getIceServers: () =>
-    apiClient.get('/chat/ice'),
-  
-  createInvite: (conversationId: string) =>
-    apiClient.post(`/chat/conversations/${conversationId}/invites`),
-  
-  redeemInvite: (token: string) =>
-    apiClient.post(`/chat/invites/${token}/redeem`),
-};
-
 // Addresses API
 export const addressesApi = {
   list: () =>
@@ -312,6 +285,24 @@ export const categoriesApi = {
   
   delete: (id: string) =>
     apiClient.delete(`/catalog/categories/${id}`),
+};
+
+// Chat API
+export const chatApi = {
+  getConversations: () =>
+    apiClient.get('/chat/conversations'),
+  
+  createConversation: (merchantId: string) =>
+    apiClient.post('/chat/conversations', { merchantId }),
+  
+  getMessages: (conversationId: string) =>
+    apiClient.get(`/chat/conversations/${conversationId}/messages`),
+  
+  sendMessage: (conversationId: string, data: { content?: string; type?: 'TEXT' | 'SIGNAL'; attachments?: string[] }) =>
+    apiClient.post(`/chat/conversations/${conversationId}/messages`, data),
+  
+  markAsRead: (conversationId: string, messageId: string) =>
+    apiClient.post(`/chat/conversations/${conversationId}/read`, { messageId }),
 };
 
 // Health API

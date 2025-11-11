@@ -739,22 +739,12 @@ export interface ReviewFormData {
   images: string[];
 }
 
-// WebSocket event types
-export interface SocketEvents {
+// Pusher event types (replacing WebSocket)
+export interface PusherEvents {
   'message': (message: Message) => void;
-  'order:updated': (order: Order) => void;
-  'shipment:updated': (shipment: Shipment) => void;
-  'notification': (notification: Notification) => void;
-  'typing': (data: { conversationId: string; userId: string; isTyping: boolean }) => void;
-  'message:read': (data: { messageId: string; readAt: string }) => void;
-}
-
-export interface SocketEmits {
-  'message:send': (data: SendMessageRequest) => void;
-  'message:read': (data: { messageId: string }) => void;
-  'typing': (data: { conversationId: string; isTyping: boolean }) => void;
-  'join:conversation': (conversationId: string) => void;
-  'leave:conversation': (conversationId: string) => void;
+  'new-message': (message: Message) => void;
+  'new-conversation': (data: { conversationId: string; userId: string; merchantId: string }) => void;
+  'message-read': (data: { messageId: string; conversationId: string; readAt: string }) => void;
 }
 
 // Re-export additional types

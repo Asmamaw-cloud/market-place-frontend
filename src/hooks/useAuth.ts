@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAppDispatch, useAppSelector } from './redux'
 import {
   requestOtp,
@@ -10,11 +11,11 @@ import {
   clearAuth,
 } from '@/store/slices/authSlice'
 import { clearCart } from '@/store/slices/cartSlice'
-import { clearMessages } from '@/store/slices/chatSlice'
 import { clearAllNotifications } from '@/store/slices/notificationsSlice'
 
 export const useAuth = () => {
   const dispatch = useAppDispatch()
+  const router = useRouter()
   const { user, accessToken, isAuthenticated, isLoading, error } = useAppSelector(
     state => state.auth
   )
@@ -33,13 +34,14 @@ export const useAuth = () => {
     [dispatch]
   )
 
-  const handleLogout = useCallback(() => {
-    dispatch(logout())
+  const handleLogout = useCallback(async () => {
+    await dispatch(logout())
     dispatch(clearCart())
-    dispatch(clearMessages())
     dispatch(clearAllNotifications())
     dispatch(clearAuth())
-  }, [dispatch])
+    // Redirect to home page after logout
+    router.push('/')
+  }, [dispatch, router])
 
   const handleLoadUser = useCallback(() => {
     return dispatch(loadUser())

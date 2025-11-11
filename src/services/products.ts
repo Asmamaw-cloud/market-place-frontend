@@ -22,9 +22,61 @@ export interface GetProductsResponse {
 
 export const productsService = {
   // Get products with filters
-  async getProducts(params: GetProductsParams = {}): Promise<GetProductsResponse> {
-    const response = await api.get('/products', { params })
-    return response.data.data || response.data
+  async getProducts(params: GetProductsParams & { merchant?: string } = {}): Promise<GetProductsResponse> {
+    try {
+      // If merchant is 'current', use the /me endpoint for authenticated merchant
+      if (params.merchant === 'current') {
+        const { merchant, ...restParams } = params
+        console.log('[productsService] Fetching products for current merchant with params:', restParams)
+        try {
+          const response = await api.get('/products/me', { params: restParams })
+          console.log('[productsService] Response received:', {
+            status: response.status,
+            hasData: !!response.data,
+            hasDataData: !!response.data?.data,
+            productsCount: response.data?.products?.length || response.data?.data?.products?.length || 0,
+            responseKeys: Object.keys(response.data || {}),
+            responseData: response.data
+          })
+          // Backend returns: { products: [], total: number, page: number, limit: number, totalPages: number }
+          // After axios: response.data = { products: [], ... }
+          const result = response.data.data || response.data
+          if (!result.products && Array.isArray(result)) {
+            // Handle case where backend returns array directly
+            return { products: result, total: result.length, page: 1, limit: result.length, totalPages: 1 }
+          }
+          return result
+        } catch (error: any) {
+          console.error('[productsService] Error calling /products/me:', {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            url: error.config?.url
+          })
+          // If 404, provide helpful error message
+          if (error.response?.status === 404) {
+            if (error.response?.data?.message?.includes('Route /products/me should match')) {
+              throw new Error('Backend route registration issue. Please restart the backend server.')
+            }
+            throw new Error('Products endpoint not found. Please ensure you are logged in as a merchant.')
+          }
+          throw error
+        }
+      }
+      // Otherwise use regular endpoint with merchantId
+      const { merchant, merchantId, ...restParams } = params
+      const response = await api.get('/products', { 
+        params: { ...restParams, merchantId: merchantId || (merchant !== 'current' ? merchant : undefined) }
+      })
+      return response.data.data || response.data
+    } catch (error: any) {
+      console.error('[productsService] Error fetching products:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      })
+      throw error
+    }
   },
 
   // Get single product

@@ -9,7 +9,6 @@ import {
   clearAllNotifications
 } from '@/store/slices/notificationsSlice'
 import { notificationsApi } from '@/services'
-import { useSocket } from './useSocket'
 
 export function useNotifications() {
   const dispatch = useAppDispatch()
@@ -19,26 +18,14 @@ export function useNotifications() {
     isLoading, 
     error 
   } = useAppSelector(state => state.notifications)
-  
-  const { socket } = useSocket()
 
   // Load notifications on mount
   useEffect(() => {
     loadNotifications()
   }, [])
 
-  // Listen for real-time notifications
-  useEffect(() => {
-    if (socket) {
-      socket.on('notification', (notification) => {
-        dispatch(addNotification(notification))
-      })
-
-      return () => {
-        socket.off('notification')
-      }
-    }
-  }, [socket, dispatch])
+  // Note: Real-time notifications via Pusher can be added later if needed
+  // For now, notifications are fetched via API
 
   const loadNotifications = useCallback(async (params?: {
     page?: number

@@ -161,15 +161,15 @@ export const notificationSchema = z.object({
   data: z.any().optional(),
 })
 
-// WebSocket event schemas
-export const socketMessageSchema = z.object({
+// Pusher event schemas (replacing WebSocket)
+export const pusherMessageSchema = z.object({
   conversationId: z.string().min(1),
   content: z.string().min(1),
   type: z.enum(['TEXT', 'SIGNAL']).default('TEXT'),
   attachments: z.array(z.string()).default([]),
 })
 
-export const socketTypingSchema = z.object({
+export const pusherTypingSchema = z.object({
   conversationId: z.string().min(1),
   isTyping: z.boolean(),
 })

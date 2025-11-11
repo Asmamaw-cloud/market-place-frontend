@@ -59,6 +59,19 @@ export const updateCartItem = createAsyncThunk(
   }
 )
 
+export const clearCartAsync = createAsyncThunk(
+  'cart/clearCartAsync',
+  async (_, { rejectWithValue }) => {
+    try {
+      // Call the backend DELETE /cart endpoint to clear all items from database
+      await cartApi.clear()
+      return { success: true }
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to clear cart')
+    }
+  }
+)
+
 const cartSlice = createSlice({
   name: 'cart',
   initialState,
@@ -73,8 +86,23 @@ const cartSlice = createSlice({
       state.error = null
     },
     calculateTotals: (state) => {
-      state.totalItems = state.items.reduce((total, item) => total + item.quantity, 0)
+      // Count unique products (by skuId), not total quantity
+      const uniqueSkus = new Set(state.items.map(item => item.skuId))
+      state.totalItems = uniqueSkus.size
       state.totalAmount = state.items.reduce((total, item) => total + (item.unitPrice * item.quantity), 0)
+    },
+    // Lightweight optimistic count increment used to instantly update navbar badge
+    // Increment by 1 for each new product added (not by quantity)
+    incrementTotalItemsOptimistic: (state, action: PayloadAction<string>) => {
+      // action.payload is the skuId
+      // Only increment if this product (skuId) is not already in cart
+      const skuId = action.payload
+      const productExists = state.items.some(item => item.skuId === skuId)
+      if (!productExists) {
+        // New product added, increment count by 1
+        state.totalItems = Math.max(0, state.totalItems + 1)
+      }
+      // If product already exists, don't increment (count is by unique products, not quantity)
     },
     // Optimistic updates
     addItemOptimistic: (state, action: PayloadAction<CartItem>) => {
@@ -107,7 +135,65 @@ const cartSlice = createSlice({
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
         state.isLoading = false
-        state.items = action.payload.data?.items || []
+        // TransformInterceptor wraps response in { data: ... }
+        // response.data from axios = { data: Cart }
+        // So action.payload (which is response.data) = { data: Cart }
+        // action.payload.data = Cart object with items array
+        
+        // Try multiple possible response structures
+        let items: any[] = []
+        const payload = action.payload as any
+        
+        if (payload) {
+          // Case 1: { data: { items: [...] } }
+          if (payload.data && Array.isArray(payload.data.items)) {
+            items = payload.data.items
+          }
+          // Case 2: { data: Cart object } where Cart has items property
+          else if (payload.data && payload.data.items) {
+            items = Array.isArray(payload.data.items) ? payload.data.items : []
+          }
+          // Case 3: Cart object directly (no data wrapper)
+          else if (Array.isArray(payload.items)) {
+            items = payload.items
+          }
+          // Case 4: items array directly
+          else if (Array.isArray(payload)) {
+            items = payload
+          }
+        }
+        
+        // Debug: log what we received
+        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+          console.log('Cart fetch response:', {
+            payload: action.payload,
+            itemsLength: items?.length,
+            items
+          })
+        }
+        
+        // Only filter out items that are completely invalid (no id or skuId)
+        // Keep items even if sku or product relation is missing - we'll handle that in the UI
+        const validItems = Array.isArray(items) 
+          ? items.filter((item: any) => {
+              const isValid = item && item.id && item.skuId
+              if (!isValid && typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+                console.warn('Filtered out invalid cart item (missing id or skuId):', item)
+              }
+              return isValid
+            })
+          : []
+        
+        // Log what we're setting as items
+        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+          console.log('Setting cart items:', {
+            validItemsLength: validItems.length,
+            validItems,
+            sampleItem: validItems[0]
+          })
+        }
+        
+        state.items = validItems as CartItem[]
         cartSlice.caseReducers.calculateTotals(state)
       })
       .addCase(fetchCart.rejected, (state, action) => {
@@ -122,13 +208,15 @@ const cartSlice = createSlice({
       })
       .addCase(addToCart.fulfilled, (state, action) => {
         state.isLoading = false
-        // Update cart with server response
-        state.items = action.payload.data?.items || state.items
-        cartSlice.caseReducers.calculateTotals(state)
+        // addToCart returns a single CartItem, not the full cart
+        // The cart will be refetched in useCart hook after this
+        // Don't update items here - wait for fetchCart to complete
       })
       .addCase(addToCart.rejected, (state, action) => {
         state.isLoading = false
         state.error = action.payload as string
+        // Recalculate from items to revert any optimistic count changes
+        cartSlice.caseReducers.calculateTotals(state)
       })
       
       // Remove from Cart
@@ -153,11 +241,35 @@ const cartSlice = createSlice({
       })
       .addCase(updateCartItem.fulfilled, (state, action) => {
         state.isLoading = false
-        // Update cart with server response
-        state.items = action.payload.data?.items || state.items
+        // updateItem returns a single CartItem, not the full cart
+        // Update the specific item in the items array
+        const updatedItem = action.payload?.data || action.payload
+        if (updatedItem?.id) {
+          const itemIndex = state.items.findIndex(item => item.id === updatedItem.id)
+          if (itemIndex >= 0) {
+            state.items[itemIndex] = { ...state.items[itemIndex], ...updatedItem } as CartItem
+          }
+        }
         cartSlice.caseReducers.calculateTotals(state)
       })
       .addCase(updateCartItem.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload as string
+      })
+      
+      // Clear Cart
+      .addCase(clearCartAsync.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(clearCartAsync.fulfilled, (state) => {
+        state.isLoading = false
+        state.items = []
+        state.totalItems = 0
+        state.totalAmount = 0
+        state.error = null
+      })
+      .addCase(clearCartAsync.rejected, (state, action) => {
         state.isLoading = false
         state.error = action.payload as string
       })
@@ -168,6 +280,7 @@ export const {
   clearError,
   clearCart,
   calculateTotals,
+  incrementTotalItemsOptimistic,
   addItemOptimistic,
   removeItemOptimistic,
   updateItemOptimistic,
